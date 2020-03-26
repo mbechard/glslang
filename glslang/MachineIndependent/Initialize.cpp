@@ -4760,6 +4760,13 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                 "in int gl_VertexIndex;"
                 "in int gl_InstanceIndex;"
                 );
+
+        if (spvVersion.vulkan > 0 && version >= 140 && spvVersion.vulkanRelaxed)
+            stageBuiltins[EShLangVertex].append(
+                "in int gl_VertexID;"         // declare with 'in' qualifier
+                "in int gl_InstanceID;"       // xxTODO: at a glance, I can't find a difference between the treatment of regular 'varyingIn' qualifier and the special 'VertexID'/'InstanceID' qualifiers that GL glsl uses. Using a new declaration for now, but it might be possible to reuse the vertexID and InstanceID declarations...
+                );
+
         if (version >= 440) {
             stageBuiltins[EShLangVertex].append(
                 "in int gl_BaseVertexARB;"
@@ -4797,7 +4804,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                 "mediump float gl_PointSize;" // needs qualifier fixed later
                 );
         } else {
-            if (spvVersion.vulkan == 0)
+            if (spvVersion.vulkan == 0 || spvVersion.vulkanRelaxed)
                 stageBuiltins[EShLangVertex].append(
                     "in highp int gl_VertexID;"      // needs qualifier fixed later
                     "in highp int gl_InstanceID;"    // needs qualifier fixed later
@@ -7161,9 +7168,19 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         if (spvVersion.vulkan > 0) {
             BuiltInVariable("gl_VertexIndex",   EbvVertexIndex,   symbolTable);
             BuiltInVariable("gl_InstanceIndex", EbvInstanceIndex, symbolTable);
+
+            if (spvVersion.vulkanRelaxed) {
+            
+            }
         }
 
 #ifndef GLSLANG_WEB
+        if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
+            // treat these built-ins as aliases of VertexIndex and InstanceIndex
+            BuiltInVariable("gl_VertexID", EbvVertexIndex, symbolTable);
+            BuiltInVariable("gl_InstanceID", EbvInstanceIndex, symbolTable);
+        }
+
         if (spvVersion.vulkan == 0) {
             SpecialQualifier("gl_VertexID",   EvqVertexId,   EbvVertexId,   symbolTable);
             SpecialQualifier("gl_InstanceID", EvqInstanceId, EbvInstanceId, symbolTable);

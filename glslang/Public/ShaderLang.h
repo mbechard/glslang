@@ -183,6 +183,7 @@ struct TInputLanguage {
     EShLanguage stage;        // redundant information with other input, this one overrides when not EShSourceNone
     EShClient dialect;
     int dialectVersion;       // version of client's language definition, not the client (when not EShClientNone)
+    bool VulkanRulesRelaxed = false;
 };
 
 struct TClient {
@@ -518,6 +519,9 @@ public:
 #else
     bool getEnvTargetHlslFunctionality1() const { return false; }
 #endif
+
+    void setEnvInputVulkanRulesRelaxed() { environment.input.VulkanRulesRelaxed = true; }
+    bool getEnvInputVulkanRulesRelaxed() const { return environment.input.VulkanRulesRelaxed; }
 
     // Interface to #include handlers.
     //

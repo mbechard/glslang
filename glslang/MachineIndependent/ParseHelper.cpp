@@ -3253,7 +3253,7 @@ void TParseContext::transparentOpaqueCheck(const TSourceLoc& loc, const TType& t
 
     if (type.containsNonOpaque()) {
         // Vulkan doesn't allow transparent uniforms outside of blocks
-        if (spvVersion.vulkan > 0)
+        if (spvVersion.vulkan > 0 && !spvVersion.vulkanRelaxed)
             vulkanRemoved(loc, "non-opaque uniforms outside a block");
         // OpenGL wants locations on these (unless they are getting automapped)
         if (spvVersion.openGl > 0 && !type.getQualifier().hasLocation() && !intermediate.getAutoMapLocations())
@@ -5757,7 +5757,7 @@ void TParseContext::layoutTypeCheck(const TSourceLoc& loc, const TType& type)
 #endif
         }
         if (type.isAtomic()) {
-            if (qualifier.layoutBinding >= (unsigned int)resources.maxAtomicCounterBindings) {
+            if (qualifier.layoutBinding >= (unsigned int)resources.maxAtomicCounterBindings) { // xxTODO: make sure maxAtomicCounterBindings is set properly when using VulkanRelaxed or disable this check?
                 error(loc, "atomic_uint binding is too large; see gl_MaxAtomicCounterBindings", "binding", "");
                 return;
             }
@@ -6516,6 +6516,28 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
     if (symbol == nullptr)
         reservedErrorCheck(loc, identifier);
 
+    if (symbol == nullptr && spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) { // xxTODO: move other checks and etc. into functions
+        if (!parsingBuiltins && !symbolTable.atBuiltInLevel() && symbolTable.atGlobalLevel() &&
+            type.getQualifier().storage == EvqUniform && type.containsNonOpaque()) {
+            // xxTODO: set these base on compiler params
+            globalUniformBinding = 0;
+            globalUniformSet = 10;
+            // xxTODO: how will arrays be handled here...
+            // xxTODO: In the case that uniform is a struct:
+            //        Hlsl parser has a copy of the struct's member list that it passes (to replace the shallow copy of the member list)
+            //        they do this because the HLSL struct can have mixed uniform/in/out members, and they need JUST the uniforms
+            //        that's needed here BUT make sure the shallow copy is safe (i.e. the PublicType that the member list comes from won't get deleted out from under us at any point)
+            //        There's no special handling of structs elswhere, so I think we're safe ??
+            //if (type.isStruct()) {
+            //    auto it = ioTypeMap.find(memberType.getStruct());
+            //    if (it != ioTypeMap.end() && it->second.uniform)
+            //        newTypeList = it->second.uniform;
+            //}
+            growGlobalUniformBlock(loc, type, identifier, nullptr);
+            symbol = symbolTable.find(identifier);
+        }
+    }
+
     inheritGlobalDefaults(type.getQualifier());
 
     // Declare the variable
@@ -6549,6 +6571,7 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             error(loc, "initializer requires a variable, not a member", identifier.c_str(), "");
             return nullptr;
         }
+        // xxTODO: how will uniform initializers handle VulkanRelaxed moving the uniform into a struct ??
         initNode = executeInitializer(loc, initializer, variable);
     }
 

@@ -106,6 +106,7 @@ bool targetHlslFunctionality1 = false;
 bool SpvToolsDisassembler = false;
 bool SpvToolsValidate = false;
 bool NaNClamp = false;
+bool VulkanRulesRelaxed = false;
 
 //
 // Return codes from main/exit().
@@ -706,6 +707,11 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                 else
                     Error("unknown -O option");
                 break;
+            case 'R':
+                VulkanRulesRelaxed = true;    // xxTODO: this option implies that -V and --auto-map-bindings are enabled as well
+                                              // xxTODO: add ability to specify global uniform buffer set/binding and atomic buffer set
+                                              // xxTODO: maybe merge into -f option ??
+                break;
             case 'S':
                 if (argc <= 1)
                     Error("no <stage> specified for -S");
@@ -1064,6 +1070,8 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
             if (targetHlslFunctionality1)
                 shader->setEnvTargetHlslFunctionality1();
 #endif
+            if (VulkanRulesRelaxed)
+                shader->setEnvInputVulkanRulesRelaxed();
         }
 
         shaders.push_back(shader);
