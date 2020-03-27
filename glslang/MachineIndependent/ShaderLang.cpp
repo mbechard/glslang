@@ -712,6 +712,7 @@ void TranslateEnvironment(const TEnvironment* environment, EShMessages& messages
                 break;
             case EShClientVulkan:
                 spvVersion.vulkanGlsl = environment->input.dialectVersion;
+                spvVersion.vulkanRelaxed = environment->input.VulkanRulesRelaxed;
                 break;
             case EShClientOpenGL:
                 spvVersion.openGl = environment->input.dialectVersion;
