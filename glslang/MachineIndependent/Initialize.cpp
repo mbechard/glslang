@@ -7194,10 +7194,6 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         if (spvVersion.vulkan > 0) {
             BuiltInVariable("gl_VertexIndex",   EbvVertexIndex,   symbolTable);
             BuiltInVariable("gl_InstanceIndex", EbvInstanceIndex, symbolTable);
-
-            if (spvVersion.vulkanRelaxed) {
-            
-            }
         }
 
 #ifndef GLSLANG_WEB
