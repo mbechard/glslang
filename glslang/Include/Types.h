@@ -475,13 +475,13 @@ enum TInterlockOrdering {
 
 enum TShaderInterface
 {
+    // Includes both uniform blocks and buffer blocks
     EsiUniform = 0,
-    EsiBuffer,
     EsiInput,
     EsiOutput,
     EsiNone,
 
-    EsiLast
+    EsiCount
 };
 
 
@@ -1638,14 +1638,13 @@ public:
             return EsiNone;
         case EvqVaryingIn:
             return EsiInput;
-		case EvqVaryingOut:
+        case EvqVaryingOut:
             return EsiOutput;
         case EvqUniform:
-            return EsiUniform;
         case EvqBuffer:
-            return EsiBuffer;
-		}
-	}
+            return EsiUniform;
+        }
+    }
 
     virtual TBasicType getBasicType() const { return basicType; }
     virtual const TSampler& getSampler() const { return sampler; }
@@ -1704,7 +1703,7 @@ public:
     }
     virtual bool isOpaque() const { return basicType == EbtSampler
 #ifndef GLSLANG_WEB
-         || basicType == EbtAtomicUint || basicType == EbtAccStruct
+         || basicType == EbtAtomicUint || basicType == EbtAccStruct || basicType == EbtRayQuery
 #endif
         ; }
     virtual bool isBuiltIn() const { return getQualifier().builtIn != EbvNone; }

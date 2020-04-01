@@ -340,8 +340,8 @@ public:
         const TQualifier& qualifier = symbol->getType().getQualifier();
         if (qualifier.builtIn != EbvNone) {
             TShaderInterface si = symbol->getType().getShaderInterface();
-			idMaps[si][getNameForIdMap(symbol)] = symbol->getId();
-		}
+            idMaps[si][getNameForIdMap(symbol)] = symbol->getId();
+        }
         maxId = std::max(maxId, symbol->getId());
     }
     int getMaxId() const { return maxId; }
@@ -364,8 +364,8 @@ public:
         const TQualifier& qualifier = symbol->getType().getQualifier();
         if (qualifier.builtIn == EbvNone) {
             TShaderInterface si = symbol->getType().getShaderInterface();
-			idMaps[si][getNameForIdMap(symbol)] = symbol->getId();
-		}
+            idMaps[si][getNameForIdMap(symbol)] = symbol->getId();
+        }
     }
 
 protected:
@@ -564,10 +564,11 @@ void TIntermediate::mergeErrorCheck(TInfoSink& infoSink, const TIntermSymbol& sy
         writeTypeComparison = true;
     }
 
-    if ((IsAnonymous(symbol.getName()) != IsAnonymous(unitSymbol.getName()) ||
+    if (symbol.getQualifier().storage == unitSymbol.getQualifier().storage &&
+        (IsAnonymous(symbol.getName()) != IsAnonymous(unitSymbol.getName()) ||
          (!IsAnonymous(symbol.getName()) && symbol.getName() != unitSymbol.getName()))) {
-		warn(infoSink, "Matched shader interfaces are using different instance names.");
-		writeTypeComparison = true;
+        warn(infoSink, "Matched shader interfaces are using different instance names.");
+        writeTypeComparison = true;
     }
 
     // Precision...
