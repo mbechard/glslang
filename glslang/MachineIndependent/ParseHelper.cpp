@@ -6533,6 +6533,31 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             //    if (it != ioTypeMap.end() && it->second.uniform)
             //        newTypeList = it->second.uniform;
             //}
+
+            warn(loc, "moving uniform into global uniform block", identifier.c_str(), ""); // xxTODO: finalize text in warning
+
+            if (type.getQualifier().hasLocation()) {
+                // xxTODO: do we want to ignore qualifiers here?
+                warn(loc, "ignoring layout qualifier 'location'", identifier.c_str(), ""); // xxTODO: finalize text in warning
+                type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
+            }
+
+            if (initializer) {
+              // xxTODO: do we want invalid initializers to still have compile errors?
+                initializer = nullptr;
+                warn(loc, "ignoring initializer", identifier.c_str(), "");  // xxTODO: finalize text in warning
+            }
+
+            if (type.isArray()) { // if (type.isArray())
+                arraySizesCheck(loc, type.getQualifier(), type.getArraySizes(), initializer, false);
+
+                if (arrayQualifierError(loc, type.getQualifier()) || arrayError(loc, type)) {
+                    error(loc, "array param error", identifier.c_str(), "");
+                }
+            }
+            
+            // layoutTypeCheck(loc, type); // Included in the Object Check after creation
+            
             growGlobalUniformBlock(loc, type, identifier, nullptr);
             symbol = symbolTable.find(identifier);
         }
