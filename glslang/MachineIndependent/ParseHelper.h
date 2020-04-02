@@ -288,6 +288,13 @@ public:
     bool parseShaderStrings(TPpContext&, TInputScanner& input, bool versionWillBeError = false) override;
     void parserError(const char* s);     // for bison's yyerror
 
+    virtual const char* getGlobalUniformBlockName() const override { return "gl_GlobalUniformBlock"; }
+    virtual void setUniformBlockDefaults(TType& block) const override
+    {
+        block.getQualifier().layoutPacking = ElpStd140;
+        block.getQualifier().layoutMatrix = ElmRowMajor;
+    }
+
     void reservedErrorCheck(const TSourceLoc&, const TString&);
     void reservedPpErrorCheck(const TSourceLoc&, const char* name, const char* op) override;
     bool lineContinuationCheck(const TSourceLoc&, bool endOfComment) override;
