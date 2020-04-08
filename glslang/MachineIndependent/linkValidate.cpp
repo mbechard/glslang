@@ -136,6 +136,7 @@ void TIntermediate::mergeModes(TInfoSink& infoSink, TIntermediate& unit)
     MERGE_MAX(spvVersion.vulkanGlsl);
     MERGE_MAX(spvVersion.vulkan);
     MERGE_MAX(spvVersion.openGl);
+    MERGE_TRUE(spvVersion.vulkanRelaxed);
 
     numErrors += unit.getNumErrors();
     // Only one push_constant is allowed, mergeLinkerObjects() will ensure the push_constant
