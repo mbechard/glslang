@@ -287,15 +287,13 @@ private:
 };
 
 // The class is used for reserving explicit uniform locations and ubo/ssbo/opaque bindings
+// xxTODO: maybe this logic should be moved into the resolver's "validateInOut" and "validateUniform"
 
 struct TSymbolValidater
 {
     TSymbolValidater(TIoMapResolver& r, TInfoSink& i, TVarLiveMap* in[EShLangCount], TVarLiveMap* out[EShLangCount],
                      TVarLiveMap* uniform[EShLangCount], bool& hadError)
-        : preStage(EShLangCount)
-        , currentStage(EShLangCount)
-        , nextStage(EShLangCount)
-        , resolver(r)
+        : resolver(r)
         , infoSink(i)
         , hadError(hadError)
     {
@@ -312,30 +310,47 @@ struct TSymbolValidater
         TString mangleName1, mangleName2;
         type.appendMangledName(mangleName1);
         EShLanguage stage = ent1.stage;
-        if (currentStage != stage) {
-            preStage = currentStage;
-            currentStage = stage;
-            nextStage = EShLangCount;
-            for (int i = currentStage + 1; i < EShLangCount; i++) {
-                if (inVarMaps[i] != nullptr)
-                    nextStage = static_cast<EShLanguage>(i);
-            }
+
+        EShLanguage preStage, currentStage, nextStage;
+
+        preStage = EShLangCount;
+        for (int i = stage - 1; i >= 0; i--) {
+            if (inVarMaps[i] != nullptr)
+                preStage = static_cast<EShLanguage>(i);
         }
+        currentStage = stage;
+        nextStage = EShLangCount;
+        for (int i = stage + 1; i < EShLangCount; i++) {
+            if (inVarMaps[i] != nullptr)
+                nextStage = static_cast<EShLanguage>(i);
+        }
+
+        // xxTodo: this is matching based on instance name instead of interface block-name ...
         if (base->getQualifier().storage == EvqVaryingIn) {
             // validate stage in;
             if (preStage == EShLangCount)
                 return;
             if (outVarMaps[preStage] != nullptr) {
-                auto ent2 = outVarMaps[preStage]->find(name);
-                if (ent2 != outVarMaps[preStage]->end()) {
-                    ent2->second.symbol->getType().appendMangledName(mangleName2);
-                    if (mangleName1 == mangleName2)
-                        return;
-                    else {
-                        TString err = "Invalid In/Out variable type : " + entKey.first;
-                        infoSink.info.message(EPrefixInternalError, err.c_str());
-                        hadError = true;
+                if (base->getBasicType() != EbtBlock) {
+                    auto ent2 = outVarMaps[preStage]->find(name);
+                    if (ent2 != outVarMaps[preStage]->end()) {
+                        ent2->second.symbol->getType().appendMangledName(mangleName2);
+                        if (mangleName1 == mangleName2)
+                            return;
+                        else {
+                            TString err = "Invalid In/Out variable type : " + entKey.first;
+                            infoSink.info.message(EPrefixInternalError, err.c_str());
+                            hadError = true;
+                        }
                     }
+                }
+                else {
+                }
+
+                if (ent1.live) {
+                    TString err = "No matching 'out' declaration in previous stage for 'in' variable : " + entKey.first; //xxTODO: finalized text
+                    infoSink.info.message(EPrefixInternalError, err.c_str());
+                    hadError = true;
                 }
                 return;
             }
@@ -361,23 +376,40 @@ struct TSymbolValidater
             // validate uniform type;
             for (int i = 0; i < EShLangCount; i++) {
                 if (i != currentStage && outVarMaps[i] != nullptr) {
-                    auto ent2 = uniformVarMap[i]->find(name);
-                    if (ent2 != uniformVarMap[i]->end()) {
-                        ent2->second.symbol->getType().appendMangledName(mangleName2);
-                        if (mangleName1 != mangleName2) {
-                            TString err = "Invalid Uniform variable type : " + entKey.first;
-                            infoSink.info.message(EPrefixInternalError, err.c_str());
-                            hadError = true;
+                    if (ent1.symbol->getBasicType() != EbtBlock) {
+                        auto ent2 = uniformVarMap[i]->find(name);
+                        if (ent2 != uniformVarMap[i]->end()) {
+                            ent2->second.symbol->getType().appendMangledName(mangleName2);
+                            if (mangleName1 != mangleName2) {
+                                TString err = "Invalid Uniform variable type : " + entKey.first;
+                                infoSink.info.message(EPrefixInternalError, err.c_str());
+                                hadError = true;
+                            }
+                            mangleName2.clear();
                         }
-                        mangleName2.clear();
+                    }
+                    else {
+                      auto ent2 = std::find_if(uniformVarMap[i]->begin(), uniformVarMap[i]->end(),
+                          [&ent1](const auto &ent2) {
+                              return ent2.second.symbol->getBasicType() == EbtBlock && ent2.second.symbol->getType().getTypeName() == ent1.symbol->getType().getTypeName();
+                          });
+                        if (ent2 != uniformVarMap[i]->end()) {
+                            if (!ent1.symbol->getType().sameStructType(ent2->second.symbol->getType()) ||
+                                !ent1.symbol->getType().sameArrayness(ent2->second.symbol->getType()) ||
+                                !(IsAnonymous(ent1.symbol->getName()) == IsAnonymous(ent2->second.symbol->getName()))
+                            ){
+                                  TString err = "Invalid Uniform variable type : " + entKey.first;
+                                  infoSink.info.message(EPrefixInternalError, err.c_str());
+                                  hadError = true;
+                            }
+                        }
                     }
                 }
             }
         }
     }
     TVarLiveMap *inVarMaps[EShLangCount], *outVarMaps[EShLangCount], *uniformVarMap[EShLangCount];
-    // Use for mark pre stage, to get more interface symbol information.
-    EShLanguage preStage, currentStage, nextStage;
+    
     // Use for mark current shader stage for resolver
     TIoMapResolver& resolver;
     TInfoSink& infoSink;
@@ -587,7 +619,7 @@ int TDefaultGlslIoResolver::resolveInOutLocation(EShLanguage stage, TVarEntryInf
         preStage = currentStage;
         currentStage = stage;
     }
-    // kick out of not doing this
+    // kick out if not doing this
     if (! doAutoLocationMapping()) {
         return ent.newLocation = -1;
     }
