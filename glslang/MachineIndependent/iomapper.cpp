@@ -120,7 +120,10 @@ public:
             return;
 
         TVarEntryInfo ent = { base->getId() };
-        TVarLiveMap::const_iterator at = source->find(base->getName());
+        TString name = base->getBasicType() == EbtBlock ?
+                       base->getType().getTypeName() :
+                       base->getName();
+        TVarLiveMap::const_iterator at = source->find(name);
         if (at == source->end())
             return;
 
@@ -611,7 +614,7 @@ TDefaultGlslIoResolver::TDefaultGlslIoResolver(const TIntermediate& intermediate
 
 int TDefaultGlslIoResolver::resolveInOutLocation(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
@@ -772,7 +775,7 @@ int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEn
 
 int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
@@ -850,7 +853,7 @@ void TDefaultGlslIoResolver::endCollect(EShLanguage /*stage*/) {
 
 void TDefaultGlslIoResolver::reserverStorageSlot(TVarEntryInfo& ent, TInfoSink& infoSink) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
@@ -913,7 +916,7 @@ void TDefaultGlslIoResolver::reserverStorageSlot(TVarEntryInfo& ent, TInfoSink& 
 
 void TDefaultGlslIoResolver::reserverResourceSlot(TVarEntryInfo& ent, TInfoSink& infoSink) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
