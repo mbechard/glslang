@@ -204,8 +204,8 @@ struct TResolverUniformAdaptor {
         ent.newIndex = -1;
         const bool isValid = resolver.validateBinding(stage, ent);
         if (isValid) {
-            resolver.resolveBinding(stage, ent);
             resolver.resolveSet(stage, ent);
+            resolver.resolveBinding(stage, ent);
             resolver.resolveUniformLocation(stage, ent);
 
             if (ent.newBinding != -1) {
@@ -789,7 +789,7 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo&
     // There is no 'set' qualifier in OpenGL shading language, each resource has its own
     // binding name space, so remap the 'set' to resource type which make each resource
     // binding is valid from 0 to MAX_XXRESOURCE_BINDINGS
-    int set = resource;
+    int set = intermediate.getSpv().openGl != 0 ? resource : ent.newSet;
     if (resource < EResCount) {
         if (type.getQualifier().hasBinding()) {
             ent.newBinding = reserveSlot(set, getBaseBinding(resource, set) + type.getQualifier().layoutBinding, numBindings);
@@ -800,7 +800,7 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo&
             // the resource has binding, don't need to allocate if it already has a binding
             bool hasBinding = false;
             if (! resourceSlotMap[resource].empty()) {
-                TVarSlotMap::iterator iter = resourceSlotMap[resource].find(name);
+                TVarSlotMap::iterator iter = resourceSlotMap[set].find(name);
                 if (iter != resourceSlotMap[resource].end()) {
                     hasBinding = true;
                     ent.newBinding = iter->second;
@@ -812,7 +812,7 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo&
                 // first and now all are passed that do not have a binding and needs one
                 int binding = getFreeSlot(resource, getBaseBinding(resource, set), numBindings);
                 varSlotMap[name] = binding;
-                resourceSlotMap[resource] = varSlotMap;
+                resourceSlotMap[set] = varSlotMap;
                 ent.newBinding = binding;
             }
             return ent.newBinding;
