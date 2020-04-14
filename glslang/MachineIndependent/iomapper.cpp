@@ -80,14 +80,19 @@ public:
         else if (base->getQualifier().isUniformOrBuffer() && !base->getQualifier().isPushConstant())
             target = &uniformList;
         if (target) {
+            TString name = base->getBasicType() == EbtBlock ?
+                base->getType().getTypeName() :
+                base->getName();
             TVarEntryInfo ent = {base->getId(), base, ! traverseAll};
             ent.stage = intermediate.getStage();
             TVarLiveMap::iterator at = target->find(
-                ent.symbol->getName()); // std::lower_bound(target->begin(), target->end(), ent, TVarEntryInfo::TOrderById());
+                name); // std::lower_bound(target->begin(), target->end(), ent, TVarEntryInfo::TOrderById());
             if (at != target->end() && at->second.id == ent.id)
                 at->second.live = at->second.live || ! traverseAll; // update live state
-            else
-                (*target)[ent.symbol->getName()] = ent;
+            else {
+                (*target)[name] = ent;
+
+            }
         }
     }
 
@@ -334,9 +339,9 @@ struct TSymbolValidater
             if (preStage == EShLangCount)
                 return;
             if (outVarMaps[preStage] != nullptr) {
-                if (base->getBasicType() != EbtBlock) {
-                    auto ent2 = outVarMaps[preStage]->find(name);
-                    if (ent2 != outVarMaps[preStage]->end()) {
+                auto ent2 = outVarMaps[preStage]->find(name);
+                if (ent2 != outVarMaps[preStage]->end()) {
+                    if (type.getBasicType() != EbtBlock) {
                         ent2->second.symbol->getType().appendMangledName(mangleName2);
                         if (mangleName1 == mangleName2)
                             return;
@@ -346,8 +351,17 @@ struct TSymbolValidater
                             hadError = true;
                         }
                     }
-                }
-                else {
+                    else {
+                        if (ent1.symbol->getType().sameStructType(ent2->second.symbol->getType()) &&
+                            ent1.symbol->getType().sameArrayness(ent2->second.symbol->getType())
+                        ){
+                            return;
+                        } else {
+                            TString err = "Invalid In/Out variable type : " + entKey.first;
+                            infoSink.info.message(EPrefixInternalError, err.c_str());
+                            hadError = true;
+                        }
+                    }
                 }
 
                 if (ent1.live) {
@@ -379,9 +393,9 @@ struct TSymbolValidater
             // validate uniform type;
             for (int i = 0; i < EShLangCount; i++) {
                 if (i != currentStage && outVarMaps[i] != nullptr) {
-                    if (ent1.symbol->getBasicType() != EbtBlock) {
-                        auto ent2 = uniformVarMap[i]->find(name);
-                        if (ent2 != uniformVarMap[i]->end()) {
+                    auto ent2 = uniformVarMap[i]->find(name);
+                    if (ent2 != uniformVarMap[i]->end()) {
+                        if (ent1.symbol->getBasicType() != EbtBlock) {
                             ent2->second.symbol->getType().appendMangledName(mangleName2);
                             if (mangleName1 != mangleName2) {
                                 TString err = "Invalid Uniform variable type : " + entKey.first;
@@ -390,20 +404,101 @@ struct TSymbolValidater
                             }
                             mangleName2.clear();
                         }
-                    }
-                    else {
-                      auto ent2 = std::find_if(uniformVarMap[i]->begin(), uniformVarMap[i]->end(),
-                          [&ent1](const auto &ent2) {
-                              return ent2.second.symbol->getBasicType() == EbtBlock && ent2.second.symbol->getType().getTypeName() == ent1.symbol->getType().getTypeName();
-                          });
-                        if (ent2 != uniformVarMap[i]->end()) {
-                            if (!ent1.symbol->getType().sameStructType(ent2->second.symbol->getType()) ||
-                                !ent1.symbol->getType().sameArrayness(ent2->second.symbol->getType()) ||
-                                !(IsAnonymous(ent1.symbol->getName()) == IsAnonymous(ent2->second.symbol->getName()))
+                        else {
+                            if (ent1.symbol->getType().sameStructType(ent2->second.symbol->getType()) &&
+                                ent1.symbol->getType().sameArrayness(ent2->second.symbol->getType()) &&
+                                (IsAnonymous(ent1.symbol->getName()) == IsAnonymous(ent2->second.symbol->getName()))
                             ){
-                                  TString err = "Invalid Uniform variable type : " + entKey.first;
-                                  infoSink.info.message(EPrefixInternalError, err.c_str());
-                                  hadError = true;
+                                // check that qualifiers are the same
+                                const TType& type1 = ent1.symbol->getType();
+                                const TType& type2 = ent2->second.symbol->getType();
+
+                                const TTypeList* members1 = type1.getStruct();
+                                const TTypeList* members2 = type2.getStruct();
+
+                                // check that qualifiers are the same
+
+
+                                // member-wise layout qualifiers are the same
+                                for (unsigned int i = 0; i < members1->size(); i++) {
+                                    if (!(*members1)[i].type->getQualifier().sameLayout((*members2)[i].type->getQualifier())) {
+                                        (*members1)[i].type->getQualifier().sameLayout((*members2)[i].type->getQualifier());
+                                        TString err = "Layout Qualifications don't match : " + entKey.first + " " + (*members1)[i].type->getFieldName();
+                                        infoSink.info.message(EPrefixError, err.c_str());
+                                        hadError = true;
+                                    }
+                                }
+                            }
+                            else {
+                                TString err = "Invalid Uniform variable type : " + entKey.first;
+                                infoSink.info.message(EPrefixError, err.c_str());
+                                hadError = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (type.getBasicType() == EbtBlock) {
+            std::vector <TVarLiveMap*> targets;
+
+            const TTypeList* memberTypes = type.getStruct();
+
+            if (base->getQualifier().storage == EvqVaryingIn) {
+                if (outVarMaps[preStage] != nullptr) {
+                    targets.push_back(outVarMaps[preStage]);
+                }
+            } else if (base->getQualifier().storage == EvqVaryingOut) {
+                if (outVarMaps[nextStage] != nullptr) {
+                    targets.push_back(inVarMaps[nextStage]);
+                }
+            } else if (base->getQualifier().isUniformOrBuffer() && ! base->getQualifier().isPushConstant()) {
+                for (int i = 0; i < EShLangCount; i++) {
+                    if (i != currentStage && outVarMaps[i] != nullptr) {
+                        targets.push_back(uniformVarMap[i]);
+                    }
+                }
+            }
+
+            for (unsigned int i = 0; i < targets.size(); i++) {
+                if (IsAnonymous(base->getName())) {
+                    // for anonymous block, check for name conflicts for it's members
+                    //
+                    // from the spec:
+                    // It is a link-time error if any particular shader interface contains
+                    // - two different blocks, each having no instance name, and each having a member of the same name, or
+                    // - a variable outside a block, and a block with no instance name, where the variable has the same name as a member in the block.
+                    for (unsigned int j = 0; j < memberTypes->size(); j++) {
+                        auto fieldName = (*memberTypes)[j].type->getFieldName();
+
+                        auto it = targets[i]->begin();
+                        for (; it != targets[i]->end(); it++) {
+                            if (it->first != name) {
+                                const TType& type2 = it->second.symbol->getType();
+                                bool nameConflict = false;
+
+                                // check same-named variables outside the block
+                                if (it->first == fieldName) {
+                                    nameConflict = true;
+                                }
+
+                                // check for same-named members in anoter anonymous block
+                                if (it->second.symbol->getBasicType() == EbtBlock && IsAnonymous(it->second.symbol->getName())) {
+                                    const TTypeList* members2 = type2.getStruct();
+
+                                    for (unsigned int k = 0; k < members2->size(); k++) {
+                                        if (fieldName == ((*members2)[k].type->getFieldName())) {
+                                            nameConflict = true;
+                                        }
+                                    }
+                                }
+
+                                if (nameConflict) {
+                                    TString err = "Name used ... : " + entKey.first + " " + fieldName; //xxTODO: finalize error text
+                                    infoSink.info.message(EPrefixInternalError, err.c_str());
+                                    hadError = true;
+                                }
                             }
                         }
                     }
