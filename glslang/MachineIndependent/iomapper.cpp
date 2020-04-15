@@ -1260,19 +1260,19 @@ bool TIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TInfoSi
     resolver->beginResolve(stage);
     std::for_each(inVector.begin(), inVector.end(), inOutResolve);
     std::for_each(inVector.begin(), inVector.end(), [&inVarMap](TVarLivePair p) {
-        auto at = inVarMap.find(p.second.symbol->getName());
+        auto at = inVarMap.find(p.first);
         if (at != inVarMap.end())
             at->second = p.second;
     });
     std::for_each(outVector.begin(), outVector.end(), inOutResolve);
     std::for_each(outVector.begin(), outVector.end(), [&outVarMap](TVarLivePair p) {
-        auto at = outVarMap.find(p.second.symbol->getName());
+        auto at = outVarMap.find(p.first);
         if (at != outVarMap.end())
             at->second = p.second;
     });
     std::for_each(uniformVector.begin(), uniformVector.end(), uniformResolve);
     std::for_each(uniformVector.begin(), uniformVector.end(), [&uniformVarMap](TVarLivePair p) {
-        auto at = uniformVarMap.find(p.second.symbol->getName());
+        auto at = uniformVarMap.find(p.first);
         if (at != uniformVarMap.end())
             at->second = p.second;
     });
@@ -1385,7 +1385,7 @@ bool TGlslIoMapper::doMap(TIoMapResolver* resolver, TInfoSink& infoSink) {
                 // ubo, ssbo and opaque symbols
                 TVarLiveMap** pUniformVarMap = uniformVarMap;
                 std::for_each(uniformVector.begin(), uniformVector.end(), [pUniformVarMap, stage](TVarLivePair p) {
-                    auto at = pUniformVarMap[stage]->find(p.second.symbol->getName());
+                    auto at = pUniformVarMap[stage]->find(p.first);
                     if (at != pUniformVarMap[stage]->end())
                         at->second = p.second;
                 });
