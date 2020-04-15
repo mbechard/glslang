@@ -1181,10 +1181,10 @@ bool TIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TInfoSi
         else
             resolver = &defaultResolver;
     }
-    resolver->addStage(stage);
 #else
     resolver = &defaultResolver;
 #endif
+    resolver->addStage(stage);
 
     TVarLiveMap inVarMap, outVarMap, uniformVarMap;
     TVarLiveVector inVector, outVector, uniformVector;
@@ -1280,7 +1280,9 @@ bool TGlslIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TIn
         resolver = &defaultResolver;
     }
     resolver->addStage(stage);
-    inVarMaps[stage] = new TVarLiveMap, outVarMaps[stage] = new TVarLiveMap(), uniformVarMap[stage] = new TVarLiveMap();
+    inVarMaps[stage] = new TVarLiveMap();
+    outVarMaps[stage] = new TVarLiveMap();
+    uniformVarMap[stage] = new TVarLiveMap();
     TVarGatherTraverser iter_binding_all(intermediate, true, *inVarMaps[stage], *outVarMaps[stage],
                                          *uniformVarMap[stage]);
     TVarGatherTraverser iter_binding_live(intermediate, false, *inVarMaps[stage], *outVarMaps[stage],
