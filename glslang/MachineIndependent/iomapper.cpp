@@ -1319,19 +1319,54 @@ bool TGlslIoMapper::doMap(TIoMapResolver* resolver, TInfoSink& infoSink) {
         TResolverUniformAdaptor uniformResolve(EShLangCount, *resolver, infoSink, hadError);
         TResolverInOutAdaptor inOutResolve(EShLangCount, *resolver, infoSink, hadError);
         TSymbolValidater symbolValidater(*resolver, infoSink, inVarMaps, outVarMaps, uniformVarMap, hadError);
+
+        TVarLiveVector inVectors[EShLangCount];
+        TVarLiveVector outVectors[EShLangCount];
         TVarLiveVector uniformVector;
+
         resolver->beginResolve(EShLangCount);
         for (int stage = EShLangVertex; stage < EShLangCount; stage++) {
             if (inVarMaps[stage] != nullptr) {
                 inOutResolve.setStage(EShLanguage(stage));
-                std::for_each(inVarMaps[stage]->begin(), inVarMaps[stage]->end(), symbolValidater);
-                std::for_each(inVarMaps[stage]->begin(), inVarMaps[stage]->end(), inOutResolve);
-                std::for_each(outVarMaps[stage]->begin(), outVarMaps[stage]->end(), symbolValidater);
-                std::for_each(outVarMaps[stage]->begin(), outVarMaps[stage]->end(), inOutResolve);
+
+                // copy vars into a sorted list
+                std::for_each(inVarMaps[stage]->begin(), inVarMaps[stage]->end(),
+                        [&inVectors, stage](TVarLivePair p) { inVectors[stage].push_back(p); });
+                std::sort(inVectors[stage].begin(), inVectors[stage].end(),
+                        [](const TVarLivePair& p1, const TVarLivePair& p2) -> bool {
+                            return TVarEntryInfo::TOrderByPriority()(p1.second, p2.second);
+                });
+
+                std::for_each(outVarMaps[stage]->begin(), outVarMaps[stage]->end(),
+                        [&outVectors, stage](TVarLivePair p) { outVectors[stage].push_back(p); });
+                std::sort(outVectors[stage].begin(), outVectors[stage].end(),
+                        [](const TVarLivePair& p1, const TVarLivePair& p2) -> bool {
+                            return TVarEntryInfo::TOrderByPriority()(p1.second, p2.second);
+                });
+
+                std::for_each(inVectors[stage].begin(), inVectors[stage].end(), symbolValidater);
+                std::for_each(inVectors[stage].begin(), inVectors[stage].end(), inOutResolve);
+                std::for_each(outVectors[stage].begin(), outVectors[stage].end(), symbolValidater);
+                std::for_each(outVectors[stage].begin(), outVectors[stage].end(), inOutResolve);
+
+                // copy results back into maps
+                std::for_each(inVectors[stage].begin(), inVectors[stage].end(),
+                    [this, stage](TVarLivePair p) {
+                        auto at = inVarMaps[stage]->find(p.first);
+                        if (at != inVarMaps[stage]->end())
+                            at->second = p.second;
+                });
+
+                std::for_each(outVectors[stage].begin(), outVectors[stage].end(),
+                    [this, stage](TVarLivePair p) {
+                        auto at = outVarMaps[stage]->find(p.first);
+                        if (at != outVarMaps[stage]->end())
+                            at->second = p.second;
+                });
+
             }
             if (uniformVarMap[stage] != nullptr) {
                 uniformResolve.setStage(EShLanguage(stage));
-                // sort entries by priority. see TVarEntryInfo::TOrderByPriority for info.
                 std::for_each(uniformVarMap[stage]->begin(), uniformVarMap[stage]->end(),
                               [&uniformVector](TVarLivePair p) { uniformVector.push_back(p); });
             }
