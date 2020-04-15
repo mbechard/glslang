@@ -825,49 +825,6 @@ public:
                hasXfb();
     }
 
-    bool sameLayout(const TQualifier& other)
-    {
-        return
-            // uniform layout
-            layoutMatrix == other.layoutMatrix &&
-            layoutPacking == other.layoutPacking &&
-            layoutOffset == other.layoutOffset &&
-            layoutAlign == other.layoutAlign &&
-
-            layoutSet == other.layoutSet &&
-            layoutBinding == other.layoutBinding &&
-#ifndef GLSLANG_WEB
-            layoutAttachment == other.layoutAttachment &&
-#endif
-
-            // interstage layout
-            layoutLocation == other.layoutLocation &&
-            layoutComponent == other.layoutComponent &&
-#ifndef GLSLANG_WEB
-            layoutIndex == other.layoutIndex &&
-
-            // stream layout
-            layoutStream == other.layoutStream &&
-
-            // xfb layout
-            layoutXfbBuffer == other.layoutXfbBuffer &&
-            layoutXfbStride == other.layoutXfbStride &&
-            layoutXfbOffset == other.layoutXfbOffset &&
-
-            // generic layout
-            layoutPushConstant == other.layoutPushConstant &&
-            layoutBufferReference == other.layoutBufferReference &&
-            layoutPassthrough == other.layoutPassthrough &&
-            layoutViewportRelative == other.layoutViewportRelative &&
-            layoutSecondaryViewportRelativeOffset == other.layoutSecondaryViewportRelativeOffset &&
-            layoutShaderRecord == other.layoutShaderRecord &&
-            layoutBufferReferenceAlign == other.layoutBufferReferenceAlign &&
-            layoutFormat == other.layoutFormat &&
-#endif
-            layoutSpecConstantId == other.layoutSpecConstantId;
-
-    }
-
     TLayoutMatrix  layoutMatrix  : 3;
     TLayoutPacking layoutPacking : 4;
     int layoutOffset;
