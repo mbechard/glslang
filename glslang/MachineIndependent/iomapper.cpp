@@ -858,17 +858,17 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage stage, TVarEntryInfo& ent
     int resourceKey = set;
     if (resource < EResCount) {
         if (type.getQualifier().hasBinding()) {
-            // xxTODO: should have already been reserved by the collector
-            ent.newBinding = reserveSlot(resourceKey, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding, numBindings);
-            return ent.newBinding;
+            int newBinding = reserveSlot(resourceKey, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding, numBindings);
+            return ent.newBinding = newBinding;
+
         } else if (ent.live && doAutoBindingMapping()) {
             // The resource in current stage is not declared with binding, but it is possible declared
             // with explicit binding in other stages, find the resourceSlotMap firstly to check whether
             // the resource has binding, don't need to allocate if it already has a binding
             bool hasBinding = false;
-            if (! resourceSlotMap[set].empty()) {
-                TVarSlotMap::iterator iter = resourceSlotMap[set].find(name);
-                if (iter != resourceSlotMap[set].end()) {
+            if (! resourceSlotMap[resourceKey].empty()) {
+                TVarSlotMap::iterator iter = resourceSlotMap[resourceKey].find(name);
+                if (iter != resourceSlotMap[resourceKey].end()) {
                     hasBinding = true;
                     ent.newBinding = iter->second;
                 }
@@ -879,7 +879,7 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage stage, TVarEntryInfo& ent
                 // first and now all are passed that do not have a binding and needs one
                 int binding = getFreeSlot(resourceKey, getBaseBinding(stage, resource, set), numBindings);
                 varSlotMap[name] = binding;
-                resourceSlotMap[set] = varSlotMap;
+                resourceSlotMap[resourceKey] = varSlotMap;
                 ent.newBinding = binding;
             }
             return ent.newBinding;
@@ -987,17 +987,15 @@ void TDefaultGlslIoResolver::reserverResourceSlot(TVarEntryInfo& ent, TInfoSink&
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
-    int resource = getResourceType(type);
-    int set = resource;
-    if (intermediate.getSpv().openGl != 0) {
-      set = resolveSet(ent.stage, ent);
-    }
+    TResourceType resource = getResourceType(type);
+    int set = intermediate.getSpv().openGl != 0 ? resource : resolveSet(ent.stage, ent);
     int resourceKey = set;
 
     if (type.getQualifier().hasBinding()) {
-        TVarSlotMap& varSlotMap = resourceSlotMap[resource];
+        TVarSlotMap& varSlotMap = resourceSlotMap[resourceKey];
         TVarSlotMap::iterator iter = varSlotMap.find(name);
-        int binding = type.getQualifier().layoutBinding;
+        int binding = type.getQualifier().layoutBinding + getBaseBinding(ent.stage, resource, set);
+
         if (iter == varSlotMap.end()) {
             // Reserve the slots for the ubo, ssbo and opaques who has explicit binding
             int numBindings = intermediate.getSpv().openGl != 0 && type.isSizedArray() ? type.getCumulativeArraySize() : 1;
