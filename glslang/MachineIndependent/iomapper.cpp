@@ -504,14 +504,18 @@ TDefaultIoResolverBase::TDefaultIoResolverBase(const TIntermediate& intermediate
     , nextOutputLocation(0)
 {
     memset(stageMask, false, sizeof(bool) * (EShLangCount + 1));
+    memset(stageIntermediates, 0, sizeof(TIntermediate*) * (EShLangCount));
+    stageIntermediates[intermediate.getStage()] = &intermediate;
 }
 
-int TDefaultIoResolverBase::getBaseBinding(TResourceType res, unsigned int set) const {
-    return selectBaseBinding(intermediate.getShiftBinding(res), intermediate.getShiftBindingForSet(res, set));
+int TDefaultIoResolverBase::getBaseBinding(EShLanguage stage, TResourceType res, unsigned int set) const {
+    return stageIntermediates[stage] ? selectBaseBinding(stageIntermediates[stage]->getShiftBinding(res), stageIntermediates[stage]->getShiftBindingForSet(res, set))
+                                     : selectBaseBinding(intermediate.getShiftBinding(res), intermediate.getShiftBindingForSet(res, set));
 }
 
-const std::vector<std::string>& TDefaultIoResolverBase::getResourceSetBinding() const {
-    return intermediate.getResourceSetBinding();
+const std::vector<std::string>& TDefaultIoResolverBase::getResourceSetBinding(EShLanguage stage) const {
+    return stageIntermediates[stage] ? stageIntermediates[stage]->getResourceSetBinding()
+                                     : intermediate.getResourceSetBinding();
 }
 
 bool TDefaultIoResolverBase::doAutoBindingMapping() const { return intermediate.getAutoMapBindings(); }
@@ -552,14 +556,14 @@ int TDefaultIoResolverBase::getFreeSlot(int set, int base, int size) {
     return reserveSlot(set, base, size);
 }
 
-int TDefaultIoResolverBase::resolveSet(EShLanguage /*stage*/, TVarEntryInfo& ent) {
+int TDefaultIoResolverBase::resolveSet(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
     if (type.getQualifier().hasSet()) {
         return ent.newSet = type.getQualifier().layoutSet;
     }
     // If a command line or API option requested a single descriptor set, use that (if not overrided by spaceN)
-    if (getResourceSetBinding().size() == 1) {
-        return ent.newSet = atoi(getResourceSetBinding()[0].c_str());
+    if (getResourceSetBinding(stage).size() == 1) {
+        return ent.newSet = atoi(getResourceSetBinding(stage)[0].c_str());
     }
     return ent.newSet = 0;
 }
@@ -834,7 +838,7 @@ int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEn
     return ent.newLocation = location;
 }
 
-int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo& ent) {
+int TDefaultGlslIoResolver::resolveBinding(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
     const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
@@ -855,7 +859,7 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo&
     if (resource < EResCount) {
         if (type.getQualifier().hasBinding()) {
             // xxTODO: should have already been reserved by the collector
-            ent.newBinding = reserveSlot(resourceKey, getBaseBinding(resource, set) + type.getQualifier().layoutBinding, numBindings);
+            ent.newBinding = reserveSlot(resourceKey, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding, numBindings);
             return ent.newBinding;
         } else if (ent.live && doAutoBindingMapping()) {
             // The resource in current stage is not declared with binding, but it is possible declared
@@ -873,7 +877,7 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo&
                 TVarSlotMap varSlotMap;
                 // find free slot, the caller did make sure it passes all vars with binding
                 // first and now all are passed that do not have a binding and needs one
-                int binding = getFreeSlot(resourceKey, getBaseBinding(resource, set), numBindings);
+                int binding = getFreeSlot(resourceKey, getBaseBinding(stage, resource, set), numBindings);
                 varSlotMap[name] = binding;
                 resourceSlotMap[set] = varSlotMap;
                 ent.newBinding = binding;
@@ -1047,7 +1051,7 @@ struct TDefaultIoResolver : public TDefaultIoResolverBase {
         return EResCount;
     }
 
-    int resolveBinding(EShLanguage /*stage*/, TVarEntryInfo& ent) override {
+    int resolveBinding(EShLanguage stage, TVarEntryInfo& ent) override {
         const TType& type = ent.symbol->getType();
         const int set = getLayoutSet(type);
         // On OpenGL arrays of opaque types take a seperate binding for each element
@@ -1056,11 +1060,11 @@ struct TDefaultIoResolver : public TDefaultIoResolverBase {
         if (resource < EResCount) {
             if (type.getQualifier().hasBinding()) {
                 return ent.newBinding = reserveSlot(
-                           set, getBaseBinding(resource, set) + type.getQualifier().layoutBinding, numBindings);
+                           set, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding, numBindings);
             } else if (ent.live && doAutoBindingMapping()) {
                 // find free slot, the caller did make sure it passes all vars with binding
                 // first and now all are passed that do not have a binding and needs one
-                return ent.newBinding = getFreeSlot(set, getBaseBinding(resource, set), numBindings);
+                return ent.newBinding = getFreeSlot(set, getBaseBinding(stage, resource, set), numBindings);
             }
         }
         return ent.newBinding = -1;
@@ -1132,17 +1136,17 @@ struct TDefaultHlslIoResolver : public TDefaultIoResolverBase {
         return EResCount;
     }
 
-    int resolveBinding(EShLanguage /*stage*/, TVarEntryInfo& ent) override {
+    int resolveBinding(EShLanguage stage, TVarEntryInfo& ent) override {
         const TType& type = ent.symbol->getType();
         const int set = getLayoutSet(type);
         TResourceType resource = getResourceType(type);
         if (resource < EResCount) {
             if (type.getQualifier().hasBinding()) {
-                return ent.newBinding = reserveSlot(set, getBaseBinding(resource, set) + type.getQualifier().layoutBinding);
+                return ent.newBinding = reserveSlot(set, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding);
             } else if (ent.live && doAutoBindingMapping()) {
                 // find free slot, the caller did make sure it passes all vars with binding
                 // first and now all are passed that do not have a binding and needs one
-                return ent.newBinding = getFreeSlot(set, getBaseBinding(resource, set));
+                return ent.newBinding = getFreeSlot(set, getBaseBinding(stage, resource, set));
             }
         }
         return ent.newBinding = -1;
@@ -1184,7 +1188,7 @@ bool TIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TInfoSi
 #else
     resolver = &defaultResolver;
 #endif
-    resolver->addStage(stage);
+    resolver->addStage(stage, intermediate);
 
     TVarLiveMap inVarMap, outVarMap, uniformVarMap;
     TVarLiveVector inVector, outVector, uniformVector;
@@ -1276,10 +1280,21 @@ bool TGlslIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TIn
     }
     // if no resolver is provided, use the default resolver with the given shifts and auto map settings
     TDefaultGlslIoResolver defaultResolver(intermediate);
+#ifdef ENABLE_HLSL
+    TDefaultHlslIoResolver defaultHlslResolver(intermediate);
+    if (resolver == nullptr) {
+        // TODO: use a passed in IO mapper for this
+        if (intermediate.usingHlslIoMapping())
+            resolver = &defaultHlslResolver;
+        else
+            resolver = &defaultResolver;
+    }
+#else
     if (resolver == nullptr) {
         resolver = &defaultResolver;
     }
-    resolver->addStage(stage);
+#endif
+    resolver->addStage(stage, intermediate);
     inVarMaps[stage] = new TVarLiveMap();
     outVarMaps[stage] = new TVarLiveMap();
     uniformVarMap[stage] = new TVarLiveMap();
