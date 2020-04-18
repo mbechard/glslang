@@ -324,27 +324,63 @@ struct TSymbolValidater
 
     }
 
+    bool isIoResizeArray(const TType& type, EShLanguage language) {
+        return type.isArray() &&
+           ((language == EShLangGeometry    && type.getQualifier().storage == EvqVaryingIn) ||
+            (language == EShLangTessControl && type.getQualifier().storage == EvqVaryingOut &&
+                ! type.getQualifier().patch) ||
+            (language == EShLangFragment && type.getQualifier().storage == EvqVaryingIn &&
+                type.getQualifier().pervertexNV) ||
+            (language == EShLangMeshNV && type.getQualifier().storage == EvqVaryingOut &&
+                !type.getQualifier().perTaskNV));
+    }
+
+    // strip away the exta array dimension added to some stage's in/out parameters
+    void makeInterfaceType (TType& outInterfaceType, TArraySizes& outArraySizes, const TType& type, EShLanguage language) {
+        outInterfaceType.shallowCopy(type);
+        if (isIoResizeArray(outInterfaceType, language)) {
+            if (outInterfaceType.getArraySizes()->getNumDims() == 1) {
+                outInterfaceType.clearArraySizes();
+            }
+            else {
+                outArraySizes.copyDereferenced(*type.getArraySizes());
+                outInterfaceType.transferArraySizes(&outArraySizes);
+            }
+        }
+    }
+
+
     inline void operator()(std::pair<const TString, TVarEntryInfo>& entKey) {
         TVarEntryInfo& ent1 = entKey.second;
         TIntermSymbol* base = ent1.symbol;
         const TType& type = ent1.symbol->getType();
         const TString& name = entKey.first;
         TString mangleName1, mangleName2;
-        type.appendMangledName(mangleName1);
+        TType interfaceType1, interfaceType2;
+        TArraySizes arraySizes1, arraySizes2;
         EShLanguage stage = ent1.stage;
+
+        // update the type so it can be compared
+        makeInterfaceType(interfaceType1, arraySizes1, type, stage);
+        interfaceType1.appendMangledName(mangleName1);
+
 
         EShLanguage preStage, currentStage, nextStage;
 
         preStage = EShLangCount;
         for (int i = stage - 1; i >= 0; i--) {
-            if (inVarMaps[i] != nullptr)
+            if (inVarMaps[i] != nullptr) {
                 preStage = static_cast<EShLanguage>(i);
+                break;
+            }
         }
         currentStage = stage;
         nextStage = EShLangCount;
         for (int i = stage + 1; i < EShLangCount; i++) {
-            if (inVarMaps[i] != nullptr)
+            if (inVarMaps[i] != nullptr) {
                 nextStage = static_cast<EShLanguage>(i);
+                break;
+            }
         }
 
         // set the error messages and searched symbols based on the shader interface this symbol comes from (in/out
@@ -380,8 +416,10 @@ struct TSymbolValidater
             // basic check, match the symbol name in other shaders
             auto ent2 = targetVarMaps[i]->find(name);
             if (ent2 != targetVarMaps[i]->end()) {
+                makeInterfaceType(interfaceType2, arraySizes2, ent2->second.symbol->getType(), ent2->second.stage);
+
                 if (type.getBasicType() != EbtBlock) {
-                    ent2->second.symbol->getType().appendMangledName(mangleName2);
+                    interfaceType2.appendMangledName(mangleName2);
                     if (mangleName1 == mangleName2)
                         return;
                     else {
@@ -391,8 +429,8 @@ struct TSymbolValidater
                 }
                 else {
                     // symbol is a block-interface type
-                    if (ent1.symbol->getType().sameStructType(ent2->second.symbol->getType()) &&
-                        ent1.symbol->getType().sameArrayness(ent2->second.symbol->getType()) &&
+                    if (interfaceType1.sameStructType(interfaceType2) &&
+                        interfaceType1.sameArrayness(interfaceType2) &&
                         ((IsAnonymous(ent1.symbol->getName()) == IsAnonymous(ent2->second.symbol->getName())) || base->getQualifier().storage == EvqVaryingIn || (base->getQualifier().storage == EvqVaryingOut))) {
                         // check that qualifiers are the same
                         const TType& type1 = ent1.symbol->getType();
