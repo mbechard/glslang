@@ -87,6 +87,35 @@ struct TVarEntryInfo {
             return lPoints > rPoints;
         }
     };
+
+    struct TOrderByPriorityAndLive {
+        // ordering:
+        // 1) do live variables first
+        // 2) has both binding and set
+        // 3) has binding but no set
+        // 4) has no binding but set
+        // 5) has no binding and no set
+        inline bool operator()(const TVarEntryInfo& l, const TVarEntryInfo& r) {
+
+            const TQualifier& lq = l.symbol->getQualifier();
+            const TQualifier& rq = r.symbol->getQualifier();
+
+            // simple rules:
+            // has binding gives 2 points
+            // has set gives 1 point
+            // who has the most points is more important.
+            int lPoints = (lq.hasBinding() ? 2 : 0) + (lq.hasSet() ? 1 : 0);
+            int rPoints = (rq.hasBinding() ? 2 : 0) + (rq.hasSet() ? 1 : 0);
+
+            if (l.live != r.live)
+                return l.live > r.live;
+
+            if (lPoints != rPoints)
+                return lPoints > rPoints;
+            
+            return l.id < r.id;
+        }
+    };
 };
 
 // Base class for shared TIoMapResolver services, used by several derivations.

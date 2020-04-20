@@ -431,7 +431,8 @@ struct TSymbolValidater
                     // symbol is a block-interface type
                     if (interfaceType1.sameStructType(interfaceType2) &&
                         interfaceType1.sameArrayness(interfaceType2) &&
-                        ((IsAnonymous(ent1.symbol->getName()) == IsAnonymous(ent2->second.symbol->getName())) || base->getQualifier().storage == EvqVaryingIn || (base->getQualifier().storage == EvqVaryingOut))) {
+                        ((IsAnonymous(ent1.symbol->getName()) == IsAnonymous(ent2->second.symbol->getName())) || 
+                            base->getQualifier().storage == EvqVaryingIn || (base->getQualifier().storage == EvqVaryingOut))) {
                         // check that qualifiers are the same
                         const TType& type1 = ent1.symbol->getType();
                         const TType& type2 = ent2->second.symbol->getType();
@@ -501,7 +502,7 @@ struct TSymbolValidater
 
                             if (nameConflict) {
                                 TString err = "Name used ... : " + entKey.first + " " + fieldName; //xxTODO: finalize error text
-                                infoSink.info.message(EPrefixInternalError, err.c_str());
+                                infoSink.info.message(EPrefixError, err.c_str());
                                 hadError = true;
                             }
                         }
@@ -899,11 +900,13 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage stage, TVarEntryInfo& ent
             int newBinding = reserveSlot(resourceKey, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding, numBindings);
             return ent.newBinding = newBinding;
 
-        } else if (ent.live && doAutoBindingMapping()) {
+        } else {
             // The resource in current stage is not declared with binding, but it is possible declared
             // with explicit binding in other stages, find the resourceSlotMap firstly to check whether
             // the resource has binding, don't need to allocate if it already has a binding
             bool hasBinding = false;
+            ent.newBinding = -1; // leave as -1 if it isn't set below
+
             if (! resourceSlotMap[resourceKey].empty()) {
                 TVarSlotMap::iterator iter = resourceSlotMap[resourceKey].find(name);
                 if (iter != resourceSlotMap[resourceKey].end()) {
@@ -911,13 +914,11 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage stage, TVarEntryInfo& ent
                     ent.newBinding = iter->second;
                 }
             }
-            if (! hasBinding) {
-                TVarSlotMap varSlotMap;
+            if (!hasBinding && (ent.live && doAutoBindingMapping())) {
                 // find free slot, the caller did make sure it passes all vars with binding
                 // first and now all are passed that do not have a binding and needs one
                 int binding = getFreeSlot(resourceKey, getBaseBinding(stage, resource, set), numBindings);
-                varSlotMap[name] = binding;
-                resourceSlotMap[resourceKey] = varSlotMap;
+                resourceSlotMap[resourceKey][name] = binding;
                 ent.newBinding = binding;
             }
             return ent.newBinding;
@@ -1425,7 +1426,7 @@ bool TGlslIoMapper::doMap(TIoMapResolver* resolver, TInfoSink& infoSink) {
             }
         }
         std::sort(uniformVector.begin(), uniformVector.end(), [](const TVarLivePair& p1, const TVarLivePair& p2) -> bool {
-            return TVarEntryInfo::TOrderByPriority()(p1.second, p2.second);
+            return TVarEntryInfo::TOrderByPriorityAndLive()(p1.second, p2.second);
         });
         std::for_each(uniformVector.begin(), uniformVector.end(), symbolValidater);
         std::for_each(uniformVector.begin(), uniformVector.end(), uniformResolve);
@@ -1440,7 +1441,7 @@ bool TGlslIoMapper::doMap(TIoMapResolver* resolver, TInfoSink& infoSink) {
                 TVarLiveMap** pUniformVarMap = uniformVarMap;
                 std::for_each(uniformVector.begin(), uniformVector.end(), [pUniformVarMap, stage](TVarLivePair p) {
                     auto at = pUniformVarMap[stage]->find(p.first);
-                    if (at != pUniformVarMap[stage]->end())
+                    if (at != pUniformVarMap[stage]->end() && at->second.id == p.second.id)
                         at->second = p.second;
                 });
                 TVarSetTraverser iter_iomap(*intermediates[stage], *inVarMaps[stage], *outVarMaps[stage],
