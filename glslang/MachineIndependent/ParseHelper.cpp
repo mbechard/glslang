@@ -6551,8 +6551,57 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             //    if (it != ioTypeMap.end() && it->second.uniform)
             //        newTypeList = it->second.uniform;
             //}
+
+            warn(loc, "moving uniform into global uniform block", identifier.c_str(), ""); // xxTODO: finalize text in warning
+
+            if (type.getQualifier().hasLocation()) {
+                // xxTODO: do we want to ignore qualifiers here?
+                warn(loc, "ignoring layout qualifier 'location'", identifier.c_str(), ""); // xxTODO: finalize text in warning
+                type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
+            }
+
+            if (initializer) {
+              // xxTODO: do we want invalid initializers to still have compile errors?
+                initializer = nullptr;
+                warn(loc, "ignoring initializer", identifier.c_str(), "");  // xxTODO: finalize text in warning
+            }
+
+            if (type.isArray()) { // if (type.isArray())
+                arraySizesCheck(loc, type.getQualifier(), type.getArraySizes(), initializer, false);
+
+                if (arrayQualifierError(loc, type.getQualifier()) || arrayError(loc, type)) {
+                    error(loc, "array param error", identifier.c_str(), "");
+                }
+            }
+            
+            // layoutTypeCheck(loc, type); // Included in the Object Check after creation
+            
             growGlobalUniformBlock(loc, type, identifier, nullptr);
             symbol = symbolTable.find(identifier);
+
+            if (!symbol) {
+                error(loc, "error adding uniform to global uniform block", identifier.c_str(), ""); 
+            }
+
+            layoutObjectCheck(loc, *symbol); // xxTODO: good idea to do this for the member? do we want to do type-qualifier checks before creation instead?
+
+            // xxTODO: should do a final layoutObjectCheck() for the global buffer ?
+            {
+                auto blockQualifier = globalUniformBlock->getType().getQualifier();
+                auto typeList = *globalUniformBlock->getWritableType().getWritableStruct();
+                bool memberWithLocation = false; // no locations allowed;
+                bool memberWithoutLocation = true;
+
+                // xxTODO: most of these checks won't do anything, since we're uniforms...
+                //        not sure if we need them to catch disallowed qualifiers (e.g. xfb_..) will test
+                //fixBlockLocations(loc, blockQualifier, typeList, memberWithLocation, memberWithoutLocation); // won't matter, no locations
+                //fixXfbOffsets(currentBlockQualifier, typeList);   // won't matter, no xfb
+                fixBlockUniformOffsets(currentBlockQualifier, typeList); // xxTODO: the glslangToSpv module appears to generate offsets on its own, so we don't need to explicitly set it for the members; still probably a good thing to do?
+                
+                layoutObjectCheck(loc, *globalUniformBlock);
+            }
+
+            return nullptr;
         }
     }
 
