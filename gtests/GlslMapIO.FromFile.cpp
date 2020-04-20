@@ -52,9 +52,144 @@ struct IoMapData {
 
 using GlslMapIOTest = GlslangTest <::testing::TestWithParam<IoMapData>>;
 
+template<class T>
+std::string interfaceName(T symbol) {
+    return symbol.getType()->getBasicType() == glslang::EbtBlock ? std::string(symbol.getType()->getTypeName().c_str()) : symbol.name;
+}
+
+bool verifyIOMapping(std::string& linkingError, glslang::TProgram& program) {
+    bool success = true;
+
+    // Verify IO Mapping by generating reflection for each stage individually
+    // and comparing layout qualifiers on the results
+
+
+    int reflectionOptions = EShReflectionDefault;
+    //reflectionOptions |= EShReflectionStrictArraySuffix;
+    //reflectionOptions |= EShReflectionBasicArraySuffix;
+    reflectionOptions |= EShReflectionIntermediateIO;
+    reflectionOptions |= EShReflectionSeparateBuffers;
+    reflectionOptions |= EShReflectionAllBlockVariables;
+    //reflectionOptions |= EShReflectionUnwrapIOBlocks;
+
+    success &= program.buildReflection(reflectionOptions);
+
+    // check that the reflection output from the individual stages all makes sense..
+    std::vector<glslang::TReflection> stageReflections;
+    for (int s = 0; s < EShLangCount; ++s) {
+        if (program.getIntermediate((EShLanguage)s)) {
+            stageReflections.emplace_back((EShReflectionOptions)reflectionOptions, (EShLanguage)s, (EShLanguage)s);
+            success &= stageReflections.back().addStage((EShLanguage)s, *program.getIntermediate((EShLanguage)s));
+        }
+    }
+
+    // check that input/output locations match between stages
+    auto it = stageReflections.begin();
+    auto nextIt = it + 1;
+    for (; nextIt != stageReflections.end(); it++, nextIt++) {
+        int numOut = it->getNumPipeOutputs();
+        std::map<std::string, const glslang::TObjectReflection*> pipeOut;
+
+        for (int i = 0; i < numOut; i++) {
+            const glslang::TObjectReflection& out = it->getPipeOutput(i);
+            std::string name = interfaceName(out);
+            pipeOut[name] = &out;
+        }
+
+        int numIn = nextIt->getNumPipeInputs();
+        for (int i = 0; i < numIn; i++) {
+            auto in = nextIt->getPipeInput(i);
+            std::string name = interfaceName(in);
+            auto out = pipeOut.find(name);
+
+            if (out != pipeOut.end()) {
+                auto inQualifier = in.getType()->getQualifier();
+                auto outQualifier = out->second->getType()->getQualifier();
+                success &= outQualifier.layoutLocation == inQualifier.layoutLocation;
+            }
+            else {
+                success &= false;
+            }
+        }
+    }
+
+    // compare uniforms in each stage to the program
+    {
+        int totalUniforms = program.getNumUniformVariables();
+        std::map<std::string, const glslang::TObjectReflection*> programUniforms;
+        for (int i = 0; i < totalUniforms; i++) {
+            const glslang::TObjectReflection& uniform = program.getUniform(i);
+            std::string name = interfaceName(uniform);
+            programUniforms[name] = &uniform;
+        }
+        it = stageReflections.begin();
+        for (; it != stageReflections.end(); it++) {
+            int numUniform = it->getNumUniforms();
+            std::map<std::string, glslang::TObjectReflection> uniforms;
+
+            for (int i = 0; i < numUniform; i++) {
+                glslang::TObjectReflection uniform = it->getUniform(i);
+                std::string name = interfaceName(uniform);
+                auto programUniform = programUniforms.find(name);
+
+                if (programUniform != programUniforms.end()) {
+                    auto stageQualifier = uniform.getType()->getQualifier();
+                    auto programQualifier = programUniform->second->getType()->getQualifier();
+
+                    success &= stageQualifier.layoutLocation == programQualifier.layoutLocation;
+                    success &= stageQualifier.layoutBinding == programQualifier.layoutBinding;
+                    success &= stageQualifier.layoutSet == programQualifier.layoutSet;
+                }
+                else {
+                    success &= false;
+                }
+            }
+        }
+    }
+
+    // compare uniform blocks in each stage to the program table
+    {
+        int totalUniforms = program.getNumUniformBlocks();
+        std::map<std::string, const glslang::TObjectReflection*> programUniforms;
+        for (int i = 0; i < totalUniforms; i++) {
+            const glslang::TObjectReflection& uniform = program.getUniformBlock(i);
+            std::string name = interfaceName(uniform);
+            programUniforms[name] = &uniform;
+        }
+        it = stageReflections.begin();
+        for (; it != stageReflections.end(); it++) {
+            int numUniform = it->getNumUniformBlocks();
+            std::map<std::string, glslang::TObjectReflection> uniforms;
+
+            for (int i = 0; i < numUniform; i++) {
+                glslang::TObjectReflection uniform = it->getUniformBlock(i);
+                std::string name = interfaceName(uniform);
+                auto programUniform = programUniforms.find(name);
+
+                if (programUniform != programUniforms.end()) {
+                    auto stageQualifier = uniform.getType()->getQualifier();
+                    auto programQualifier = programUniform->second->getType()->getQualifier();
+
+                    success &= stageQualifier.layoutLocation == programQualifier.layoutLocation;
+                    success &= stageQualifier.layoutBinding == programQualifier.layoutBinding;
+                    success &= stageQualifier.layoutSet == programQualifier.layoutSet;
+                }
+                else {
+                    success &= false;
+                }
+            }
+        }
+    }
+
+    if (!success) {
+        linkingError += "Mismatched cross-stage IO\n";
+    }
+
+    return success;
+}
+
 TEST_P(GlslMapIOTest, FromFile)
 {
-
     const auto& fileNames = GetParam().fileNames;
     Semantics semantics = GetParam().semantics;
     const size_t fileCount = fileNames.size();
@@ -83,10 +218,6 @@ TEST_P(GlslMapIOTest, FromFile)
                                     shader->getStage(), glslang::EShClientVulkan, 100);
                 shader->setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_1);
                 shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
-
-                //if (useRelaxedVulkan) {
-                //  shader->setEnvInputVulkanRulesRelaxed();
-                //}
             } else {
                 shader->setEnvInput((controls & EShMsgReadHlsl) ? glslang::EShSourceHlsl
                                                                : glslang::EShSourceGlsl,
@@ -121,58 +252,8 @@ TEST_P(GlslMapIOTest, FromFile)
     result.linkingOutput = program.getInfoLog();
     result.linkingError = program.getInfoDebugLog();
 
-#if 0 
-    // generate reflection info for each stage separately
-    int reflectionOptions = EShReflectionDefault;
-    //reflectionOptions |= EShReflectionStrictArraySuffix;
-    //reflectionOptions |= EShReflectionBasicArraySuffix;
-    reflectionOptions |= EShReflectionIntermediateIO;
-    reflectionOptions |= EShReflectionSeparateBuffers;
-    reflectionOptions |= EShReflectionAllBlockVariables;
-    reflectionOptions |= EShReflectionUnwrapIOBlocks;
+    success &= verifyIOMapping(result.linkingError, program);
 
-    success &= program.buildReflection(reflectionOptions);
-    
-// check that the reflection output from the individual stages all makes sense..
-    std::vector<glslang::TReflection> stageReflections;
-    for (int s = 0; s < EShLangCount; ++s) {
-        if (program.getIntermediate((EShLanguage)s)) {
-            stageReflections.emplace_back((EShReflectionOptions)reflectionOptions, (EShLanguage)s, (EShLanguage)s);
-            success &= stageReflections.back().addStage((EShLanguage)s, *program.getIntermediate((EShLanguage)s));
-        }
-    }
-
-
-    // check that input/output match between stages
-    auto it = stageReflections.begin();
-    auto nextIt = it + 1;
-    for (;nextIt != stageReflections.end() ; it++, nextIt++) {
-        int numOut = it->getNumPipeOutputs();
-        std::map<std::string, glslang::TObjectReflection> pipeOut;
-
-        for (int i = 0; i < numOut; i++) {
-            glslang::TObjectReflection out = it->getPipeOutput(i);
-            pipeOut[out.name] = out;
-        }
-
-        int numIn = nextIt->getNumPipeInputs();
-        for (int i = 0; i < numOut; i++) {
-            auto in = nextIt->getPipeInput(i);
-            auto out = pipeOut.find(in.name);
-
-            if (out != pipeOut.end()) {
-                auto inQualifier = in.getType()->getQualifier();
-                auto outQualifier = out->second.getType()->getQualifier();
-                success &= outQualifier.layoutLocation == inQualifier.layoutLocation;
-            }
-        }
-    }
-
-    if (success) {
-        // confirm that uniforms match... the global reflection
-
-    }
-#endif
     if (success && (controls & EShMsgSpvRules)) {
         for (int stage = 0; stage < EShLangCount; ++stage) {
             if (program.getIntermediate((EShLanguage)stage)) {
