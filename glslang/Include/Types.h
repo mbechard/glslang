@@ -837,6 +837,7 @@ public:
         return hasNonXfbLayout() ||
                hasXfb();
     }
+
     TLayoutMatrix  layoutMatrix  : 3;
     TLayoutPacking layoutPacking : 4;
     int layoutOffset;
