@@ -162,7 +162,10 @@ struct TXfbBuffer {
 #endif
 
 // Track a set of strings describing how the module was processed.
-// Using the form:
+// This includes command line options, transforms, etc., ideally inclusive enough
+// to reproduce the steps used to transform the input source to the output.
+// E.g., see SPIR-V OpModuleProcessed.
+// Each "process" or "transform" uses is expressed in the form:
 //   process arg0 arg1 arg2 ...
 //   process arg0 arg1 arg2 ...
 // where everything is textual, and there can be zero or more arguments
@@ -221,6 +224,15 @@ enum ComputeDerivativeMode {
     LayoutDerivativeGroupQuads,   // derivative_group_quadsNV
     LayoutDerivativeGroupLinear,  // derivative_group_linearNV
 };
+
+class TIdMaps {
+public:
+    TMap<TString, int>& operator[](int i) { return maps[i]; };
+    const TMap<TString, int>& operator[](int i) const { return maps[i]; };
+private:
+    TMap<TString, int> maps[EsiCount];
+};
+
 
 //
 // Set of helper functions to help parse and build the tree.
@@ -503,7 +515,7 @@ public:
     bool getAutoMapBindings() const { return false; }
     bool getAutoMapLocations() const { return false; }
     int getNumPushConstants() const { return 0; }
-    void addShaderRecordNVCount() { }
+    void addShaderRecordCount() { }
     void addTaskNVCount() { }
     void setUseVulkanMemoryModel() { }
     bool usingVulkanMemoryModel() const { return false; }
@@ -859,8 +871,8 @@ protected:
     void mergeCallGraphs(TInfoSink&, TIntermediate&);
     void mergeModes(TInfoSink&, TIntermediate&);
     void mergeTrees(TInfoSink&, TIntermediate&);
-    void seedIdMap(TMap<TString, int>& idMap, int& maxId);
-    void remapIds(const TMap<TString, int>& idMap, int idShift, TIntermediate&);
+    void seedIdMap(TIdMaps& idMaps, int& maxId);
+    void remapIds(const TIdMaps& idMaps, int idShift, TIntermediate&);
     void mergeBodies(TInfoSink&, TIntermSequence& globals, const TIntermSequence& unitGlobals);
     void mergeLinkerObjects(TInfoSink&, TIntermSequence& linkerObjects, const TIntermSequence& unitLinkerObjects);
     void mergeImplicitArraySizes(TType&, const TType&);
