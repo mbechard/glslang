@@ -310,6 +310,7 @@ void TIntermediate::mergeTrees(TInfoSink& infoSink, TIntermediate& unit)
     remapIds(idMaps, maxId + 1, unit);
 
     mergeBodies(infoSink, globals, unitGlobals);
+    mergeGlobalUniformBlocks(infoSink, unit, linkerObjects, unit.findLinkerObjects()->getSequence());
     mergeLinkerObjects(infoSink, linkerObjects, unitLinkerObjects);
     ioAccessed.insert(unit.ioAccessed.begin(), unit.ioAccessed.end());
 }
@@ -449,6 +450,78 @@ void TIntermediate::mergeBodies(TInfoSink& infoSink, TIntermSequence& globals, c
     // Merge the global objects, just in front of the linker objects
     globals.insert(globals.end() - 1, unitGlobals.begin(), unitGlobals.end() - 1);
 }
+
+//
+// merge the members of the automatically generated Global Uniform Block linker objects
+// they may have different structs or different names and need to have made equivalent
+// for other linking stages
+//
+void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit, TIntermSequence& linkerObjects, TIntermSequence& unitLinkerObjects)
+{
+    // Error check and merge the linker objects (duplicates should not be created)
+    auto itBlock = std::find_if(linkerObjects.begin(), linkerObjects.end(), 
+        [this](const TIntermNode* node) -> bool {
+            const TIntermSymbol* symbol = node->getAsSymbolNode();
+            return symbol->getType().getBasicType() == EbtBlock && 
+                   symbol->getType().getShaderInterface() == EsiUniform && 
+                   symbol->getType().getTypeName() == this->globalUniformBlockName.c_str();
+    });
+    auto itUnitBlock = std::find_if(unitLinkerObjects.begin(), unitLinkerObjects.end(),
+        [&unit](const TIntermNode* node) -> bool {
+            const TIntermSymbol* symbol = node->getAsSymbolNode();
+            return symbol->getType().getBasicType() == EbtBlock && 
+                   symbol->getType().getShaderInterface() == EsiUniform && 
+                   symbol->getType().getTypeName() == unit.globalUniformBlockName.c_str();
+    });
+
+    // if it's absent from either stage or their types are the same, it can be merged normally
+    if (itBlock == linkerObjects.end() || itUnitBlock == unitLinkerObjects.end() || 
+        (*itBlock)->getAsTyped()->getType() == (*itUnitBlock)->getAsTyped()->getType()) {
+        return;
+    }
+
+    TIntermSymbol* block = (*itBlock)->getAsSymbolNode();
+    TIntermSymbol* unitBlock = (*itBlock)->getAsSymbolNode();
+
+    // merge the struct
+    // order of declarations doesn't matter and they matched based on member name
+    TTypeList* memberList = block->getType().getWritableStruct();
+    const TTypeList* unitMemberList = unitBlock->getType().getStruct();
+
+    for (unsigned int i = 0; i < memberList->size(); ++i) {
+        for (unsigned int j = 0; j < unitMemberList->size(); ++j) {
+            bool merge = true;
+            if ((*memberList)[i].type->getFieldName() == (*unitMemberList)[j].type->getFieldName()) {
+                merge = false;
+                const TType* memberType = (*memberList)[i].type;
+                const TType* unitMemberType = (*unitMemberList)[j].type;
+
+                // compare types
+                // don't need as many checks as when merging symbols, since
+                // initializers and most qualifiers are stripped when the member is moved into the block
+                if ((*memberType) != (*unitMemberType)) {
+                    error(infoSink, "Types must match:");
+                    infoSink.info << "    " << memberType->getFieldName() << ": ";
+                    infoSink.info << "\"" << memberType->getCompleteString() << "\" versus ";
+                    infoSink.info << "\"" << unitMemberType->getCompleteString() << "\"\n";
+                }
+            }
+            if (merge) {
+                TType* type = new TType;
+                type->shallowCopy(*(*unitMemberList)[j].type);
+                type->setFieldName((*unitMemberList)[j].type->getFieldName());
+                TTypeLoc typeLoc = { type, (*unitMemberList)[j].loc };
+                memberList->push_back(typeLoc);
+            }
+        }
+    }
+
+    // merge block name and updated member list back to unitType
+    TType& type = block->getWritableType();
+    TType& unitType = unitBlock->getWritableType();
+    unitType.shallowCopy(type);
+}
+
 
 //
 // Merge the linker objects from unitLinkerObjects into linkerObjects.

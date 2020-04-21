@@ -594,6 +594,7 @@ void TParseContextBase::growGlobalUniformBlock(const TSourceLoc& loc, TType& mem
         setUniformBlockDefaults(blockType);
         globalUniformBlock = new TVariable(NewPoolTString(""), blockType, true);
         firstNewMember = 0;
+        intermediate.setGlobalUniformBlockName(std::string(getGlobalUniformBlockName()));
     }
 
     // Update with binding and set
