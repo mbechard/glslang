@@ -180,7 +180,7 @@ gl_FragCoord origin is upper left
 0:?     'gfo1' ( smooth in highp 4-component vector of float)
 0:?     'gfo2' ( smooth in highp 2-component vector of float)
 0:?     'outColor' ( out highp 4-component vector of float)
-0:?     'glass' (layout( location=0 binding=0) uniform highp sampler2D)
+0:?     'glass' (layout( binding=0) uniform highp sampler2D)
 0:?     'anon@1' (layout( column_major std140) uniform block{layout( column_major std140) uniform highp 4-component vector of float a, layout( column_major std140) uniform highp 4-component vector of float b})
 0:?     'anon@2' (layout( column_major std430) readonly buffer block{layout( column_major std430) readonly buffer highp 2-component vector of float fb1})
 0:?     'blockName2' (layout( column_major std140) uniform 2-element array of block{layout( column_major std140) uniform highp 4-component vector of float a, layout( column_major std140) uniform highp 2-component vector of float b})
@@ -372,7 +372,7 @@ gl_FragCoord origin is upper left
 0:?     'gfo1' ( smooth in highp 4-component vector of float)
 0:?     'gfo2' ( smooth in highp 2-component vector of float)
 0:?     'outColor' ( out highp 4-component vector of float)
-0:?     'glass' (layout( location=0 binding=0) uniform highp sampler2D)
+0:?     'glass' (layout( binding=0) uniform highp sampler2D)
 0:?     'anon@1' (layout( column_major std140) uniform block{layout( column_major std140) uniform highp 4-component vector of float a, layout( column_major std140) uniform highp 4-component vector of float b})
 0:?     'anon@2' (layout( column_major std430) readonly buffer block{layout( column_major std430) readonly buffer highp 2-component vector of float fb1})
 0:?     'blockName2' (layout( column_major std140) uniform 2-element array of block{layout( column_major std140) uniform highp 4-component vector of float a, layout( column_major std140) uniform highp 2-component vector of float b})
@@ -630,7 +630,6 @@ gl_FragCoord origin is upper left
                               Decorate 72(outBlock) Block
                               Decorate 74 Location 5
                               Decorate 76(gfo2) Location 1
-                              Decorate 80(glass) Location 0
                               Decorate 80(glass) DescriptorSet 0
                               Decorate 80(glass) Binding 0
                2:             TypeVoid

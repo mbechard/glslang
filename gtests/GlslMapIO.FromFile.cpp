@@ -248,9 +248,11 @@ TEST_P(GlslMapIOTest, FromFile)
     glslang::TDefaultGlslIoResolver resolver(*firstIntermediate);
     glslang::TGlslIoMapper ioMapper;
 
-    success &= program.mapIO(&resolver, &ioMapper);
-    result.linkingOutput = program.getInfoLog();
-    result.linkingError = program.getInfoDebugLog();
+    if (success) {
+        success &= program.mapIO(&resolver, &ioMapper);
+        result.linkingOutput = program.getInfoLog();
+        result.linkingError = program.getInfoDebugLog();
+    }
 
     success &= verifyIOMapping(result.linkingError, program);
 

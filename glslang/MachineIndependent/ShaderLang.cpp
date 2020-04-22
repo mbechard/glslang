@@ -1946,7 +1946,10 @@ bool TProgram::link(EShMessages messages)
             error = true;
     }
 
-    // TODO: Link: cross-stage error checking
+    if (!error) {
+        if (! crossStageCheck(messages))
+            error = true;
+    }
 
     return ! error;
 }
@@ -2019,6 +2022,59 @@ bool TProgram::linkStage(EShLanguage stage, EShMessages messages)
         intermediate[stage]->output(*infoSink, true);
 
     return intermediate[stage]->getNumErrors() == 0;
+}
+
+//
+// Check that there are no errors in linker objects accross stages
+//
+// Return true if no errors.
+//
+bool TProgram::crossStageCheck(EShMessages messages) {
+
+    // make temporary intermediates to hold the linkage symbols for each linking interface
+    // while we do the checks
+    // Independent interfaces are:
+    //                  all uniform variables and blocks
+    //                  all buffer blocks
+    //                  all in/out on a stage boundary
+
+    TVector<TIntermediate*> activeStages;
+    for (int s = 0; s < EShLangCount; ++s) {
+        if (intermediate[s])
+            activeStages.push_back(intermediate[s]);
+    }
+
+    // no extra linking if there is only one stage
+    if (! (activeStages.size() > 1))
+        return true;
+
+    // setup temporary tree to hold unfirom objects from different stages
+    TIntermediate* firstIntermediate = activeStages.front();
+    TIntermediate uniforms(EShLangCount,
+                           firstIntermediate->getVersion(),
+                           firstIntermediate->getProfile());
+    uniforms.setSpv(firstIntermediate->getSpv());
+
+    TIntermAggregate uniformObjects(EOpLinkerObjects);
+    TIntermAggregate root(EOpSequence);
+    root.getSequence().push_back(&uniformObjects);
+    uniforms.setTreeRoot(&root);
+
+    bool error = false;
+
+    // merge uniforms from all stages into a single intermediate
+    for (unsigned int i = 0; i < activeStages.size(); ++i) {
+        uniforms.mergeUniformObjects(*infoSink, *activeStages[i]);
+    }
+    error |= uniforms.getNumErrors() != 0;
+
+    // compare cross stage symbols for each stage boundary
+    for (unsigned int i = 1; i < activeStages.size(); ++i) {
+        activeStages[i - 1]->checkStageIO(*infoSink, *activeStages[i]);
+        error |= (activeStages[i - 1]->getNumErrors() != 0);
+    }
+
+    return !error;
 }
 
 const char* TProgram::getInfoLog()

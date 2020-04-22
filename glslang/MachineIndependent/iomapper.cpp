@@ -310,60 +310,13 @@ struct TSymbolValidater
         memcpy(uniformVarMap, uniform, EShLangCount * (sizeof(TVarLiveMap*)));
     }
 
-    inline bool matchMemberLayoutQualifiers(const TQualifier& qualifier1, const TQualifier& qualifier2) {
-        // only need to compare layout qualifiers that can be applied to block members
-        // also ignore qualifiers which only apply to in or out blocks, not both (e.g. xfb_buffer)
-        return
-            // uniform qualifiers
-            qualifier1.layoutMatrix == qualifier2.layoutMatrix &&
-            qualifier1.layoutOffset == qualifier2.layoutOffset &&
-            qualifier1.layoutAlign == qualifier2.layoutAlign &&
-            // in/out qualifiers
-            qualifier1.layoutLocation == qualifier2.layoutLocation &&
-            qualifier1.layoutComponent == qualifier2.layoutComponent;
-
-    }
-
-    bool isIoResizeArray(const TType& type, EShLanguage language) {
-        return type.isArray() &&
-           ((language == EShLangGeometry    && type.getQualifier().storage == EvqVaryingIn) ||
-            (language == EShLangTessControl && type.getQualifier().storage == EvqVaryingOut &&
-                ! type.getQualifier().patch) ||
-            (language == EShLangFragment && type.getQualifier().storage == EvqVaryingIn &&
-                type.getQualifier().pervertexNV) ||
-            (language == EShLangMeshNV && type.getQualifier().storage == EvqVaryingOut &&
-                !type.getQualifier().perTaskNV));
-    }
-
-    // strip away the exta array dimension added to some stage's in/out parameters
-    void makeInterfaceType (TType& outInterfaceType, TArraySizes& outArraySizes, const TType& type, EShLanguage language) {
-        outInterfaceType.shallowCopy(type);
-        if (isIoResizeArray(outInterfaceType, language)) {
-            if (outInterfaceType.getArraySizes()->getNumDims() == 1) {
-                outInterfaceType.clearArraySizes();
-            }
-            else {
-                outArraySizes.copyDereferenced(*type.getArraySizes());
-                outInterfaceType.transferArraySizes(&outArraySizes);
-            }
-        }
-    }
-
-
     inline void operator()(std::pair<const TString, TVarEntryInfo>& entKey) {
         TVarEntryInfo& ent1 = entKey.second;
         TIntermSymbol* base = ent1.symbol;
         const TType& type = ent1.symbol->getType();
         const TString& name = entKey.first;
-        TString mangleName1, mangleName2;
-        TType interfaceType1, interfaceType2;
         TArraySizes arraySizes1, arraySizes2;
         EShLanguage stage = ent1.stage;
-
-        // update the type so it can be compared
-        makeInterfaceType(interfaceType1, arraySizes1, type, stage);
-        interfaceType1.appendMangledName(mangleName1);
-
 
         EShLanguage preStage, currentStage, nextStage;
 
@@ -383,128 +336,56 @@ struct TSymbolValidater
             }
         }
 
-        // set the error messages and searched symbols based on the shader interface this symbol comes from (in/out
-        TString err = "";  
-        std::vector <TVarLiveMap*> targetVarMaps;
+        // basic checking that symbols match
+        // more extensive checking in the link stage
 
         if (base->getQualifier().storage == EvqVaryingIn) {
+            // validate stage in;
             if (preStage == EShLangCount)
                 return;
-            err = "Invalid In/Out variable type : " + entKey.first;
             if (outVarMaps[preStage] != nullptr) {
-                targetVarMaps.push_back(outVarMaps[preStage]);
-            }
-        } else if (base->getQualifier().storage == EvqVaryingOut) {
-            if (nextStage == EShLangCount)
-                return;
-            err = "Invalid In/Out variable type : " + entKey.first;
-            if (outVarMaps[nextStage] != nullptr) {
-                targetVarMaps.push_back(inVarMaps[nextStage]);
-            }
-        } else if (base->getQualifier().isUniformOrBuffer() && ! base->getQualifier().isPushConstant()) {
-            err = "Invalid Uniform variable type : " + entKey.first;
-            for (int i = 0; i < EShLangCount; i++) {
-                if (i != currentStage && outVarMaps[i] != nullptr) {
-                    targetVarMaps.push_back(uniformVarMap[i]);
-                }
-            }
-        }
-
-        for (unsigned int i = 0; i < targetVarMaps.size(); i++) {
-            mangleName2.clear();
-
-            // basic check, match the symbol name in other shaders
-            auto ent2 = targetVarMaps[i]->find(name);
-            if (ent2 != targetVarMaps[i]->end()) {
-                makeInterfaceType(interfaceType2, arraySizes2, ent2->second.symbol->getType(), ent2->second.stage);
-
-                if (type.getBasicType() != EbtBlock) {
-                    interfaceType2.appendMangledName(mangleName2);
-                    if (mangleName1 == mangleName2)
+                auto ent2 = outVarMaps[preStage]->find(name);
+                if (ent2 != outVarMaps[preStage]->end()) {
+                   
+                    if (ent2->second.symbol->getType().sameElementType(type))
                         return;
                     else {
+                        TString err = "Invalid In/Out variable type : " + entKey.first;
                         infoSink.info.message(EPrefixInternalError, err.c_str());
                         hadError = true;
                     }
                 }
-                else {
-                    // symbol is a block-interface type
-                    if (interfaceType1.sameStructType(interfaceType2) &&
-                        interfaceType1.sameArrayness(interfaceType2) &&
-                        ((IsAnonymous(ent1.symbol->getName()) == IsAnonymous(ent2->second.symbol->getName())) || 
-                            base->getQualifier().storage == EvqVaryingIn || (base->getQualifier().storage == EvqVaryingOut))) {
-                        // check that qualifiers are the same
-                        const TType& type1 = ent1.symbol->getType();
-                        const TType& type2 = ent2->second.symbol->getType();
-
-                        const TTypeList* members1 = type1.getStruct();
-                        const TTypeList* members2 = type2.getStruct();
-
-                        // check member-wise layout qualifiers are the same
-                        for (unsigned int j = 0; j < members1->size(); j++) {
-                            if (!matchMemberLayoutQualifiers((*members1)[j].type->getQualifier(), (*members2)[j].type->getQualifier())) {
-                                matchMemberLayoutQualifiers((*members1)[j].type->getQualifier(), (*members2)[j].type->getQualifier());
-                                TString err = "Layout Qualifications don't match : " + entKey.first + " " + (*members1)[j].type->getFieldName();
-                                infoSink.info.message(EPrefixError, err.c_str());
-                                hadError = true;
-                                break;
-                            }
-                        }
-                    }
+                return;
+            }
+        }
+        else if (base->getQualifier().storage == EvqVaryingOut) {
+            // validate stage out;
+            if (nextStage == EShLangCount)
+                return;
+            if (outVarMaps[nextStage] != nullptr) {
+                auto ent2 = inVarMaps[nextStage]->find(name);
+                if (ent2 != inVarMaps[nextStage]->end()) {
+                    if (ent2->second.symbol->getType().sameElementType(type))
+                        return;
                     else {
+                        TString err = "Invalid In/Out variable type : " + entKey.first;
                         infoSink.info.message(EPrefixInternalError, err.c_str());
                         hadError = true;
                     }
                 }
+                return;
             }
-            else {
-                if (base->getQualifier().storage == EvqVaryingIn) {
-                    TString err = "No matching 'out' declaration in previous stage for 'in' variable : " + entKey.first; //xxTODO: finalized text
-                    infoSink.info.message(ent1.live ? EPrefixError : EPrefixWarning, err.c_str());
-                    hadError = hadError || ent1.live;
-                }
-            }
-
-            if (base->getBasicType() == EbtBlock && IsAnonymous(base->getName())) {
-                // for anonymous block, check for name conflicts for it's members
-                //
-                // from the spec:
-                // It is a link-time error if any particular shader interface contains
-                // - two different blocks, each having no instance name, and each having a member of the same name, or
-                // - a variable outside a block, and a block with no instance name, where the variable has the same name as a member in the block.
-                const TTypeList* memberTypes = type.getStruct();
-
-                for (unsigned int j = 0; j < memberTypes->size(); j++) {
-                    auto& member = (*memberTypes)[j];
-                    auto fieldName = member.type->getFieldName();
-
-                    auto it = targetVarMaps[i]->begin();
-                    for (; it != targetVarMaps[i]->end(); it++) {
-                        if (it->first != name) {
-                            const TType& type2 = it->second.symbol->getType();
-                            bool nameConflict = false;
-
-                            // check same-named variables outside the block
-                            if (it->first == fieldName) {
-                                nameConflict = true;
-                            }
-
-                            // check for same-named members in another anonymous block
-                            if (it->second.symbol->getBasicType() == EbtBlock && IsAnonymous(it->second.symbol->getName())) {
-                                const TTypeList* members2 = type2.getStruct();
-
-                                for (unsigned int k = 0; k < members2->size(); k++) {
-                                    if (fieldName == ((*members2)[k].type->getFieldName())) {
-                                        nameConflict = true;
-                                    }
-                                }
-                            }
-
-                            if (nameConflict) {
-                                TString err = "Name used ... : " + entKey.first + " " + fieldName; //xxTODO: finalize error text
-                                infoSink.info.message(EPrefixError, err.c_str());
-                                hadError = true;
-                            }
+        }
+        else if (base->getQualifier().isUniformOrBuffer() && !base->getQualifier().isPushConstant()) {
+            // validate uniform type;
+            for (int i = 0; i < EShLangCount; i++) {
+                if (i != currentStage && outVarMaps[i] != nullptr) {
+                    auto ent2 = uniformVarMap[i]->find(name);
+                    if (ent2 != uniformVarMap[i]->end()) {
+                        if (!ent2->second.symbol->getType().sameElementType(type)) {
+                            TString err = "Invalid Uniform variable type : " + entKey.first;
+                            infoSink.info.message(EPrefixInternalError, err.c_str());
+                            hadError = true;
                         }
                     }
                 }

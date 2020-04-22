@@ -11,7 +11,7 @@ in vec2 gfo2;
 
 out vec4 outColor;
 
-layout (location = 0, binding = 0) uniform sampler2D glass;
+layout (binding = 0) uniform sampler2D glass;
 
 uniform crossStageBlock1 {
     uniform vec4 a;
