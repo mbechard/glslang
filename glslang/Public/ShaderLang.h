@@ -788,7 +788,7 @@ public:
     // Called by TSlotCollector to resolve resource locations or bindings
     virtual void reserverResourceSlot(TVarEntryInfo& ent, TInfoSink& infoSink) = 0;
     // Called by mapIO.addStage to set shader stage mask to mark a stage be added to this pipeline
-    virtual void addStage(EShLanguage stage) = 0;
+    virtual void addStage(EShLanguage stage, TIntermediate& stageIntermediate) = 0;
 };
 
 #endif // GLSLANG_WEB
@@ -910,6 +910,7 @@ public:
 
 protected:
     bool linkStage(EShLanguage, EShMessages);
+    bool crossStageCheck(EShMessages);
 
     TPoolAllocator* pool;
     std::list<TShader*> stages[EShLangCount];

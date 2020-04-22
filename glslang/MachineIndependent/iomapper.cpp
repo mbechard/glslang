@@ -80,14 +80,19 @@ public:
         else if (base->getQualifier().isUniformOrBuffer() && !base->getQualifier().isPushConstant())
             target = &uniformList;
         if (target) {
+            TString name = base->getBasicType() == EbtBlock ?
+                base->getType().getTypeName() :
+                base->getName();
             TVarEntryInfo ent = {base->getId(), base, ! traverseAll};
             ent.stage = intermediate.getStage();
             TVarLiveMap::iterator at = target->find(
-                ent.symbol->getName()); // std::lower_bound(target->begin(), target->end(), ent, TVarEntryInfo::TOrderById());
+                name); // std::lower_bound(target->begin(), target->end(), ent, TVarEntryInfo::TOrderById());
             if (at != target->end() && at->second.id == ent.id)
                 at->second.live = at->second.live || ! traverseAll; // update live state
-            else
-                (*target)[ent.symbol->getName()] = ent;
+            else {
+                (*target)[name] = ent;
+
+            }
         }
     }
 
@@ -120,7 +125,10 @@ public:
             return;
 
         TVarEntryInfo ent = { base->getId() };
-        TVarLiveMap::const_iterator at = source->find(base->getName());
+        TString name = base->getBasicType() == EbtBlock ?
+                       base->getType().getTypeName() :
+                       base->getName();
+        TVarLiveMap::const_iterator at = source->find(name);
         if (at == source->end())
             return;
 
@@ -201,8 +209,8 @@ struct TResolverUniformAdaptor {
         ent.newIndex = -1;
         const bool isValid = resolver.validateBinding(stage, ent);
         if (isValid) {
-            resolver.resolveBinding(stage, ent);
             resolver.resolveSet(stage, ent);
+            resolver.resolveBinding(stage, ent);
             resolver.resolveUniformLocation(stage, ent);
 
             if (ent.newBinding != -1) {
@@ -287,15 +295,13 @@ private:
 };
 
 // The class is used for reserving explicit uniform locations and ubo/ssbo/opaque bindings
+// xxTODO: maybe this logic should be moved into the resolver's "validateInOut" and "validateUniform"
 
 struct TSymbolValidater
 {
     TSymbolValidater(TIoMapResolver& r, TInfoSink& i, TVarLiveMap* in[EShLangCount], TVarLiveMap* out[EShLangCount],
                      TVarLiveMap* uniform[EShLangCount], bool& hadError)
-        : preStage(EShLangCount)
-        , currentStage(EShLangCount)
-        , nextStage(EShLangCount)
-        , resolver(r)
+        : resolver(r)
         , infoSink(i)
         , hadError(hadError)
     {
@@ -309,18 +315,30 @@ struct TSymbolValidater
         TIntermSymbol* base = ent1.symbol;
         const TType& type = ent1.symbol->getType();
         const TString& name = entKey.first;
-        TString mangleName1, mangleName2;
-        type.appendMangledName(mangleName1);
+        TArraySizes arraySizes1, arraySizes2;
         EShLanguage stage = ent1.stage;
-        if (currentStage != stage) {
-            preStage = currentStage;
-            currentStage = stage;
-            nextStage = EShLangCount;
-            for (int i = currentStage + 1; i < EShLangCount; i++) {
-                if (inVarMaps[i] != nullptr)
-                    nextStage = static_cast<EShLanguage>(i);
+
+        EShLanguage preStage, currentStage, nextStage;
+
+        preStage = EShLangCount;
+        for (int i = stage - 1; i >= 0; i--) {
+            if (inVarMaps[i] != nullptr) {
+                preStage = static_cast<EShLanguage>(i);
+                break;
             }
         }
+        currentStage = stage;
+        nextStage = EShLangCount;
+        for (int i = stage + 1; i < EShLangCount; i++) {
+            if (inVarMaps[i] != nullptr) {
+                nextStage = static_cast<EShLanguage>(i);
+                break;
+            }
+        }
+
+        // basic checking that symbols match
+        // more extensive checking in the link stage
+
         if (base->getQualifier().storage == EvqVaryingIn) {
             // validate stage in;
             if (preStage == EShLangCount)
@@ -328,8 +346,8 @@ struct TSymbolValidater
             if (outVarMaps[preStage] != nullptr) {
                 auto ent2 = outVarMaps[preStage]->find(name);
                 if (ent2 != outVarMaps[preStage]->end()) {
-                    ent2->second.symbol->getType().appendMangledName(mangleName2);
-                    if (mangleName1 == mangleName2)
+                   
+                    if (ent2->second.symbol->getType().sameElementType(type))
                         return;
                     else {
                         TString err = "Invalid In/Out variable type : " + entKey.first;
@@ -339,15 +357,15 @@ struct TSymbolValidater
                 }
                 return;
             }
-        } else if (base->getQualifier().storage == EvqVaryingOut) {
+        }
+        else if (base->getQualifier().storage == EvqVaryingOut) {
             // validate stage out;
             if (nextStage == EShLangCount)
                 return;
             if (outVarMaps[nextStage] != nullptr) {
                 auto ent2 = inVarMaps[nextStage]->find(name);
                 if (ent2 != inVarMaps[nextStage]->end()) {
-                    ent2->second.symbol->getType().appendMangledName(mangleName2);
-                    if (mangleName1 == mangleName2)
+                    if (ent2->second.symbol->getType().sameElementType(type))
                         return;
                     else {
                         TString err = "Invalid In/Out variable type : " + entKey.first;
@@ -357,27 +375,25 @@ struct TSymbolValidater
                 }
                 return;
             }
-        } else if (base->getQualifier().isUniformOrBuffer() && ! base->getQualifier().isPushConstant()) {
+        }
+        else if (base->getQualifier().isUniformOrBuffer() && !base->getQualifier().isPushConstant()) {
             // validate uniform type;
             for (int i = 0; i < EShLangCount; i++) {
                 if (i != currentStage && outVarMaps[i] != nullptr) {
                     auto ent2 = uniformVarMap[i]->find(name);
                     if (ent2 != uniformVarMap[i]->end()) {
-                        ent2->second.symbol->getType().appendMangledName(mangleName2);
-                        if (mangleName1 != mangleName2) {
+                        if (!ent2->second.symbol->getType().sameElementType(type)) {
                             TString err = "Invalid Uniform variable type : " + entKey.first;
                             infoSink.info.message(EPrefixInternalError, err.c_str());
                             hadError = true;
                         }
-                        mangleName2.clear();
                     }
                 }
             }
         }
     }
     TVarLiveMap *inVarMaps[EShLangCount], *outVarMaps[EShLangCount], *uniformVarMap[EShLangCount];
-    // Use for mark pre stage, to get more interface symbol information.
-    EShLanguage preStage, currentStage, nextStage;
+    
     // Use for mark current shader stage for resolver
     TIoMapResolver& resolver;
     TInfoSink& infoSink;
@@ -408,14 +424,18 @@ TDefaultIoResolverBase::TDefaultIoResolverBase(const TIntermediate& intermediate
     , nextOutputLocation(0)
 {
     memset(stageMask, false, sizeof(bool) * (EShLangCount + 1));
+    memset(stageIntermediates, 0, sizeof(TIntermediate*) * (EShLangCount));
+    stageIntermediates[intermediate.getStage()] = &intermediate;
 }
 
-int TDefaultIoResolverBase::getBaseBinding(TResourceType res, unsigned int set) const {
-    return selectBaseBinding(intermediate.getShiftBinding(res), intermediate.getShiftBindingForSet(res, set));
+int TDefaultIoResolverBase::getBaseBinding(EShLanguage stage, TResourceType res, unsigned int set) const {
+    return stageIntermediates[stage] ? selectBaseBinding(stageIntermediates[stage]->getShiftBinding(res), stageIntermediates[stage]->getShiftBindingForSet(res, set))
+                                     : selectBaseBinding(intermediate.getShiftBinding(res), intermediate.getShiftBindingForSet(res, set));
 }
 
-const std::vector<std::string>& TDefaultIoResolverBase::getResourceSetBinding() const {
-    return intermediate.getResourceSetBinding();
+const std::vector<std::string>& TDefaultIoResolverBase::getResourceSetBinding(EShLanguage stage) const {
+    return stageIntermediates[stage] ? stageIntermediates[stage]->getResourceSetBinding()
+                                     : intermediate.getResourceSetBinding();
 }
 
 bool TDefaultIoResolverBase::doAutoBindingMapping() const { return intermediate.getAutoMapBindings(); }
@@ -456,14 +476,14 @@ int TDefaultIoResolverBase::getFreeSlot(int set, int base, int size) {
     return reserveSlot(set, base, size);
 }
 
-int TDefaultIoResolverBase::resolveSet(EShLanguage /*stage*/, TVarEntryInfo& ent) {
+int TDefaultIoResolverBase::resolveSet(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
     if (type.getQualifier().hasSet()) {
         return ent.newSet = type.getQualifier().layoutSet;
     }
     // If a command line or API option requested a single descriptor set, use that (if not overrided by spaceN)
-    if (getResourceSetBinding().size() == 1) {
-        return ent.newSet = atoi(getResourceSetBinding()[0].c_str());
+    if (getResourceSetBinding(stage).size() == 1) {
+        return ent.newSet = atoi(getResourceSetBinding(stage)[0].c_str());
     }
     return ent.newSet = 0;
 }
@@ -579,7 +599,7 @@ TDefaultGlslIoResolver::TDefaultGlslIoResolver(const TIntermediate& intermediate
 
 int TDefaultGlslIoResolver::resolveInOutLocation(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
@@ -587,7 +607,7 @@ int TDefaultGlslIoResolver::resolveInOutLocation(EShLanguage stage, TVarEntryInf
         preStage = currentStage;
         currentStage = stage;
     }
-    // kick out of not doing this
+    // kick out if not doing this
     if (! doAutoLocationMapping()) {
         return ent.newLocation = -1;
     }
@@ -738,9 +758,9 @@ int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEn
     return ent.newLocation = location;
 }
 
-int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo& ent) {
+int TDefaultGlslIoResolver::resolveBinding(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
@@ -754,30 +774,32 @@ int TDefaultGlslIoResolver::resolveBinding(EShLanguage /*stage*/, TVarEntryInfo&
     // There is no 'set' qualifier in OpenGL shading language, each resource has its own
     // binding name space, so remap the 'set' to resource type which make each resource
     // binding is valid from 0 to MAX_XXRESOURCE_BINDINGS
-    int set = resource;
+    int set = intermediate.getSpv().openGl != 0 ? resource : ent.newSet;
+    int resourceKey = set;
     if (resource < EResCount) {
         if (type.getQualifier().hasBinding()) {
-            ent.newBinding = reserveSlot(set, getBaseBinding(resource, set) + type.getQualifier().layoutBinding, numBindings);
-            return ent.newBinding;
-        } else if (ent.live && doAutoBindingMapping()) {
+            int newBinding = reserveSlot(resourceKey, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding, numBindings);
+            return ent.newBinding = newBinding;
+
+        } else {
             // The resource in current stage is not declared with binding, but it is possible declared
             // with explicit binding in other stages, find the resourceSlotMap firstly to check whether
             // the resource has binding, don't need to allocate if it already has a binding
             bool hasBinding = false;
-            if (! resourceSlotMap[resource].empty()) {
-                TVarSlotMap::iterator iter = resourceSlotMap[resource].find(name);
-                if (iter != resourceSlotMap[resource].end()) {
+            ent.newBinding = -1; // leave as -1 if it isn't set below
+
+            if (! resourceSlotMap[resourceKey].empty()) {
+                TVarSlotMap::iterator iter = resourceSlotMap[resourceKey].find(name);
+                if (iter != resourceSlotMap[resourceKey].end()) {
                     hasBinding = true;
                     ent.newBinding = iter->second;
                 }
             }
-            if (! hasBinding) {
-                TVarSlotMap varSlotMap;
+            if (!hasBinding && (ent.live && doAutoBindingMapping())) {
                 // find free slot, the caller did make sure it passes all vars with binding
                 // first and now all are passed that do not have a binding and needs one
-                int binding = getFreeSlot(resource, getBaseBinding(resource, set), numBindings);
-                varSlotMap[name] = binding;
-                resourceSlotMap[resource] = varSlotMap;
+                int binding = getFreeSlot(resourceKey, getBaseBinding(stage, resource, set), numBindings);
+                resourceSlotMap[resourceKey][name] = binding;
                 ent.newBinding = binding;
             }
             return ent.newBinding;
@@ -818,7 +840,7 @@ void TDefaultGlslIoResolver::endCollect(EShLanguage /*stage*/) {
 
 void TDefaultGlslIoResolver::reserverStorageSlot(TVarEntryInfo& ent, TInfoSink& infoSink) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
@@ -881,20 +903,24 @@ void TDefaultGlslIoResolver::reserverStorageSlot(TVarEntryInfo& ent, TInfoSink& 
 
 void TDefaultGlslIoResolver::reserverResourceSlot(TVarEntryInfo& ent, TInfoSink& infoSink) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
+    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
                             ent.symbol->getType().getTypeName()
                             :
                             ent.symbol->getName();
-    int resource = getResourceType(type);
+    TResourceType resource = getResourceType(type);
+    int set = intermediate.getSpv().openGl != 0 ? resource : resolveSet(ent.stage, ent);
+    int resourceKey = set;
+
     if (type.getQualifier().hasBinding()) {
-        TVarSlotMap& varSlotMap = resourceSlotMap[resource];
+        TVarSlotMap& varSlotMap = resourceSlotMap[resourceKey];
         TVarSlotMap::iterator iter = varSlotMap.find(name);
-        int binding = type.getQualifier().layoutBinding;
+        int binding = type.getQualifier().layoutBinding + getBaseBinding(ent.stage, resource, set);
+
         if (iter == varSlotMap.end()) {
             // Reserve the slots for the ubo, ssbo and opaques who has explicit binding
-            int numBindings = type.isSizedArray() ? type.getCumulativeArraySize() : 1;
+            int numBindings = intermediate.getSpv().openGl != 0 && type.isSizedArray() ? type.getCumulativeArraySize() : 1;
             varSlotMap[name] = binding;
-            reserveSlot(resource, binding, numBindings);
+            reserveSlot(resourceKey, binding, numBindings);
         } else {
             // Allocate binding by name for OpenGL driver, so the resource in different
             // stages should be declared with the same binding
@@ -943,7 +969,7 @@ struct TDefaultIoResolver : public TDefaultIoResolverBase {
         return EResCount;
     }
 
-    int resolveBinding(EShLanguage /*stage*/, TVarEntryInfo& ent) override {
+    int resolveBinding(EShLanguage stage, TVarEntryInfo& ent) override {
         const TType& type = ent.symbol->getType();
         const int set = getLayoutSet(type);
         // On OpenGL arrays of opaque types take a seperate binding for each element
@@ -952,11 +978,11 @@ struct TDefaultIoResolver : public TDefaultIoResolverBase {
         if (resource < EResCount) {
             if (type.getQualifier().hasBinding()) {
                 return ent.newBinding = reserveSlot(
-                           set, getBaseBinding(resource, set) + type.getQualifier().layoutBinding, numBindings);
+                           set, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding, numBindings);
             } else if (ent.live && doAutoBindingMapping()) {
                 // find free slot, the caller did make sure it passes all vars with binding
                 // first and now all are passed that do not have a binding and needs one
-                return ent.newBinding = getFreeSlot(set, getBaseBinding(resource, set), numBindings);
+                return ent.newBinding = getFreeSlot(set, getBaseBinding(stage, resource, set), numBindings);
             }
         }
         return ent.newBinding = -1;
@@ -1028,17 +1054,17 @@ struct TDefaultHlslIoResolver : public TDefaultIoResolverBase {
         return EResCount;
     }
 
-    int resolveBinding(EShLanguage /*stage*/, TVarEntryInfo& ent) override {
+    int resolveBinding(EShLanguage stage, TVarEntryInfo& ent) override {
         const TType& type = ent.symbol->getType();
         const int set = getLayoutSet(type);
         TResourceType resource = getResourceType(type);
         if (resource < EResCount) {
             if (type.getQualifier().hasBinding()) {
-                return ent.newBinding = reserveSlot(set, getBaseBinding(resource, set) + type.getQualifier().layoutBinding);
+                return ent.newBinding = reserveSlot(set, getBaseBinding(stage, resource, set) + type.getQualifier().layoutBinding);
             } else if (ent.live && doAutoBindingMapping()) {
                 // find free slot, the caller did make sure it passes all vars with binding
                 // first and now all are passed that do not have a binding and needs one
-                return ent.newBinding = getFreeSlot(set, getBaseBinding(resource, set));
+                return ent.newBinding = getFreeSlot(set, getBaseBinding(stage, resource, set));
             }
         }
         return ent.newBinding = -1;
@@ -1077,10 +1103,10 @@ bool TIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TInfoSi
         else
             resolver = &defaultResolver;
     }
-    resolver->addStage(stage);
 #else
     resolver = &defaultResolver;
 #endif
+    resolver->addStage(stage, intermediate);
 
     TVarLiveMap inVarMap, outVarMap, uniformVarMap;
     TVarLiveVector inVector, outVector, uniformVector;
@@ -1122,19 +1148,19 @@ bool TIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TInfoSi
     resolver->beginResolve(stage);
     std::for_each(inVector.begin(), inVector.end(), inOutResolve);
     std::for_each(inVector.begin(), inVector.end(), [&inVarMap](TVarLivePair p) {
-        auto at = inVarMap.find(p.second.symbol->getName());
+        auto at = inVarMap.find(p.first);
         if (at != inVarMap.end())
             at->second = p.second;
     });
     std::for_each(outVector.begin(), outVector.end(), inOutResolve);
     std::for_each(outVector.begin(), outVector.end(), [&outVarMap](TVarLivePair p) {
-        auto at = outVarMap.find(p.second.symbol->getName());
+        auto at = outVarMap.find(p.first);
         if (at != outVarMap.end())
             at->second = p.second;
     });
     std::for_each(uniformVector.begin(), uniformVector.end(), uniformResolve);
     std::for_each(uniformVector.begin(), uniformVector.end(), [&uniformVarMap](TVarLivePair p) {
-        auto at = uniformVarMap.find(p.second.symbol->getName());
+        auto at = uniformVarMap.find(p.first);
         if (at != uniformVarMap.end())
             at->second = p.second;
     });
@@ -1172,11 +1198,24 @@ bool TGlslIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TIn
     }
     // if no resolver is provided, use the default resolver with the given shifts and auto map settings
     TDefaultGlslIoResolver defaultResolver(intermediate);
+#ifdef ENABLE_HLSL
+    TDefaultHlslIoResolver defaultHlslResolver(intermediate);
+    if (resolver == nullptr) {
+        // TODO: use a passed in IO mapper for this
+        if (intermediate.usingHlslIoMapping())
+            resolver = &defaultHlslResolver;
+        else
+            resolver = &defaultResolver;
+    }
+#else
     if (resolver == nullptr) {
         resolver = &defaultResolver;
     }
-    resolver->addStage(stage);
-    inVarMaps[stage] = new TVarLiveMap, outVarMaps[stage] = new TVarLiveMap(), uniformVarMap[stage] = new TVarLiveMap();
+#endif
+    resolver->addStage(stage, intermediate);
+    inVarMaps[stage] = new TVarLiveMap();
+    outVarMaps[stage] = new TVarLiveMap();
+    uniformVarMap[stage] = new TVarLiveMap();
     TVarGatherTraverser iter_binding_all(intermediate, true, *inVarMaps[stage], *outVarMaps[stage],
                                          *uniformVarMap[stage]);
     TVarGatherTraverser iter_binding_live(intermediate, false, *inVarMaps[stage], *outVarMaps[stage],
@@ -1215,25 +1254,60 @@ bool TGlslIoMapper::doMap(TIoMapResolver* resolver, TInfoSink& infoSink) {
         TResolverUniformAdaptor uniformResolve(EShLangCount, *resolver, infoSink, hadError);
         TResolverInOutAdaptor inOutResolve(EShLangCount, *resolver, infoSink, hadError);
         TSymbolValidater symbolValidater(*resolver, infoSink, inVarMaps, outVarMaps, uniformVarMap, hadError);
+
+        TVarLiveVector inVectors[EShLangCount];
+        TVarLiveVector outVectors[EShLangCount];
         TVarLiveVector uniformVector;
+
         resolver->beginResolve(EShLangCount);
         for (int stage = EShLangVertex; stage < EShLangCount; stage++) {
             if (inVarMaps[stage] != nullptr) {
                 inOutResolve.setStage(EShLanguage(stage));
-                std::for_each(inVarMaps[stage]->begin(), inVarMaps[stage]->end(), symbolValidater);
-                std::for_each(inVarMaps[stage]->begin(), inVarMaps[stage]->end(), inOutResolve);
-                std::for_each(outVarMaps[stage]->begin(), outVarMaps[stage]->end(), symbolValidater);
-                std::for_each(outVarMaps[stage]->begin(), outVarMaps[stage]->end(), inOutResolve);
+
+                // copy vars into a sorted list
+                std::for_each(inVarMaps[stage]->begin(), inVarMaps[stage]->end(),
+                        [&inVectors, stage](TVarLivePair p) { inVectors[stage].push_back(p); });
+                std::sort(inVectors[stage].begin(), inVectors[stage].end(),
+                        [](const TVarLivePair& p1, const TVarLivePair& p2) -> bool {
+                            return TVarEntryInfo::TOrderByPriority()(p1.second, p2.second);
+                });
+
+                std::for_each(outVarMaps[stage]->begin(), outVarMaps[stage]->end(),
+                        [&outVectors, stage](TVarLivePair p) { outVectors[stage].push_back(p); });
+                std::sort(outVectors[stage].begin(), outVectors[stage].end(),
+                        [](const TVarLivePair& p1, const TVarLivePair& p2) -> bool {
+                            return TVarEntryInfo::TOrderByPriority()(p1.second, p2.second);
+                });
+
+                std::for_each(inVectors[stage].begin(), inVectors[stage].end(), symbolValidater);
+                std::for_each(inVectors[stage].begin(), inVectors[stage].end(), inOutResolve);
+                std::for_each(outVectors[stage].begin(), outVectors[stage].end(), symbolValidater);
+                std::for_each(outVectors[stage].begin(), outVectors[stage].end(), inOutResolve);
+
+                // copy results back into maps
+                std::for_each(inVectors[stage].begin(), inVectors[stage].end(),
+                    [this, stage](TVarLivePair p) {
+                        auto at = inVarMaps[stage]->find(p.first);
+                        if (at != inVarMaps[stage]->end())
+                            at->second = p.second;
+                });
+
+                std::for_each(outVectors[stage].begin(), outVectors[stage].end(),
+                    [this, stage](TVarLivePair p) {
+                        auto at = outVarMaps[stage]->find(p.first);
+                        if (at != outVarMaps[stage]->end())
+                            at->second = p.second;
+                });
+
             }
             if (uniformVarMap[stage] != nullptr) {
                 uniformResolve.setStage(EShLanguage(stage));
-                // sort entries by priority. see TVarEntryInfo::TOrderByPriority for info.
                 std::for_each(uniformVarMap[stage]->begin(), uniformVarMap[stage]->end(),
                               [&uniformVector](TVarLivePair p) { uniformVector.push_back(p); });
             }
         }
         std::sort(uniformVector.begin(), uniformVector.end(), [](const TVarLivePair& p1, const TVarLivePair& p2) -> bool {
-            return TVarEntryInfo::TOrderByPriority()(p1.second, p2.second);
+            return TVarEntryInfo::TOrderByPriorityAndLive()(p1.second, p2.second);
         });
         std::for_each(uniformVector.begin(), uniformVector.end(), symbolValidater);
         std::for_each(uniformVector.begin(), uniformVector.end(), uniformResolve);
@@ -1247,8 +1321,8 @@ bool TGlslIoMapper::doMap(TIoMapResolver* resolver, TInfoSink& infoSink) {
                 // ubo, ssbo and opaque symbols
                 TVarLiveMap** pUniformVarMap = uniformVarMap;
                 std::for_each(uniformVector.begin(), uniformVector.end(), [pUniformVarMap, stage](TVarLivePair p) {
-                    auto at = pUniformVarMap[stage]->find(p.second.symbol->getName());
-                    if (at != pUniformVarMap[stage]->end())
+                    auto at = pUniformVarMap[stage]->find(p.first);
+                    if (at != pUniformVarMap[stage]->end() && at->second.id == p.second.id)
                         at->second = p.second;
                 });
                 TVarSetTraverser iter_iomap(*intermediates[stage], *inVarMaps[stage], *outVarMaps[stage],

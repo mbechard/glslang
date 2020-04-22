@@ -807,6 +807,9 @@ public:
     void merge(TInfoSink&, TIntermediate&);
     void finalCheck(TInfoSink&, bool keepUncalled);
 
+    void mergeUniformObjects(TInfoSink& infoSink, TIntermediate& unit);
+    void checkStageIO(TInfoSink&, TIntermediate&);
+
     bool buildConvertOp(TBasicType dst, TBasicType src, TOperator& convertOp) const;
     TIntermTyped* createConversion(TBasicType convertTo, TIntermTyped* node) const;
 
@@ -829,6 +832,8 @@ public:
     static int getOffset(const TType& type, int index);
     static int getBlockSize(const TType& blockType);
     static int computeBufferReferenceTypeSize(const TType&);
+    static bool isIoResizeArray(const TType& type, EShLanguage language);
+
     bool promote(TIntermOperator*);
     void setNanMinMaxClamp(bool setting) { nanMinMaxClamp = setting; }
     bool getNanMinMaxClamp() const { return nanMinMaxClamp; }
@@ -882,9 +887,9 @@ protected:
     void remapIds(const TIdMaps& idMaps, int idShift, TIntermediate&);
     void mergeBodies(TInfoSink&, TIntermSequence& globals, const TIntermSequence& unitGlobals);
     void mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit, TIntermSequence& linkerObjects, TIntermSequence& unitLinkerObjects);
-    void mergeLinkerObjects(TInfoSink&, TIntermSequence& linkerObjects, const TIntermSequence& unitLinkerObjects);
+    void mergeLinkerObjects(TInfoSink&, TIntermSequence& linkerObjects, const TIntermSequence& unitLinkerObjects, EShLanguage);
     void mergeImplicitArraySizes(TType&, const TType&);
-    void mergeErrorCheck(TInfoSink&, const TIntermSymbol&, const TIntermSymbol&, bool crossStage);
+    void mergeErrorCheck(TInfoSink&, const TIntermSymbol&, const TIntermSymbol&, EShLanguage);
     void checkCallGraphCycles(TInfoSink&);
     void checkCallGraphBodies(TInfoSink&, bool keepUncalled);
     void inOutLocationCheck(TInfoSink&);
