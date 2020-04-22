@@ -357,7 +357,7 @@ void TIntermediate::mergeTrees(TInfoSink& infoSink, TIntermediate& unit)
     remapIds(idMaps, maxId + 1, unit);
 
     mergeBodies(infoSink, globals, unitGlobals);
-    mergeGlobalUniformBlocks(infoSink, unit, linkerObjects, unit.findLinkerObjects()->getSequence())
+    mergeGlobalUniformBlocks(infoSink, unit);
     mergeLinkerObjects(infoSink, linkerObjects, unitLinkerObjects, unit.getStage());
     ioAccessed.insert(unit.ioAccessed.begin(), unit.ioAccessed.end());
 }
@@ -511,8 +511,11 @@ static inline bool isSameInterface(TIntermSymbol* symbol, EShLanguage stage, TIn
 // they may have different structs or different names and need to have made equivalent
 // for other linking stages
 //
-void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit, TIntermSequence& linkerObjects, TIntermSequence& unitLinkerObjects)
+void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit)
 {
+    TIntermSequence& linkerObjects = findLinkerObjects()->getSequence();
+    TIntermSequence& unitLinkerObjects = unit.findLinkerObjects()->getSequence();
+
     // Error check and merge the linker objects (duplicates should not be created)
     auto itBlock = std::find_if(linkerObjects.begin(), linkerObjects.end(), 
         [this](const TIntermNode* node) -> bool {
@@ -530,26 +533,37 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
     });
 
     // if it's absent from either stage or their types are the same, it can be merged normally
-    if (itBlock == linkerObjects.end() || itUnitBlock == unitLinkerObjects.end() || 
-        (*itBlock)->getAsTyped()->getType() == (*itUnitBlock)->getAsTyped()->getType()) {
+    if (itUnitBlock == unitLinkerObjects.end()) {
+        return;
+    }
+
+    if (itBlock == linkerObjects.end()) {
+        linkerObjects.push_back(*itUnitBlock);
+        globalUniformBlockName = (*itUnitBlock)->getAsSymbolNode()->getType().getTypeName().c_str();
+        return;
+    }
+
+    if ((*itBlock)->getAsTyped()->getType() == (*itUnitBlock)->getAsTyped()->getType()) {
         return;
     }
 
     TIntermSymbol* block = (*itBlock)->getAsSymbolNode();
-    TIntermSymbol* unitBlock = (*itBlock)->getAsSymbolNode();
+    TIntermSymbol* unitBlock = (*itUnitBlock)->getAsSymbolNode();
 
     // merge the struct
     // order of declarations doesn't matter and they matched based on member name
     TTypeList* memberList = block->getType().getWritableStruct();
     const TTypeList* unitMemberList = unitBlock->getType().getStruct();
 
-    for (unsigned int i = 0; i < memberList->size(); ++i) {
-        for (unsigned int j = 0; j < unitMemberList->size(); ++j) {
-            bool merge = true;
-            if ((*memberList)[i].type->getFieldName() == (*unitMemberList)[j].type->getFieldName()) {
+
+    unsigned int memberListStartSize = memberList->size();
+    for (unsigned int i = 0; i < unitMemberList->size(); ++i) {
+        bool merge = true;
+        for (unsigned int j = 0; j < memberListStartSize; ++j) {
+            if ((*memberList)[j].type->getFieldName() == (*unitMemberList)[i].type->getFieldName()) {
                 merge = false;
-                const TType* memberType = (*memberList)[i].type;
-                const TType* unitMemberType = (*unitMemberList)[j].type;
+                const TType* memberType = (*memberList)[j].type;
+                const TType* unitMemberType = (*unitMemberList)[i].type;
 
                 // compare types
                 // don't need as many checks as when merging symbols, since
@@ -561,13 +575,13 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
                     infoSink.info << "\"" << unitMemberType->getCompleteString() << "\"\n";
                 }
             }
-            if (merge) {
-                TType* type = new TType;
-                type->shallowCopy(*(*unitMemberList)[j].type);
-                type->setFieldName((*unitMemberList)[j].type->getFieldName());
-                TTypeLoc typeLoc = { type, (*unitMemberList)[j].loc };
-                memberList->push_back(typeLoc);
-            }
+        }
+        if (merge) {
+            TType* type = new TType;
+            type->shallowCopy(*(*unitMemberList)[i].type);
+            type->setFieldName((*unitMemberList)[i].type->getFieldName());
+            TTypeLoc typeLoc = { type, (*unitMemberList)[i].loc };
+            memberList->push_back(typeLoc);
         }
     }
 
@@ -575,6 +589,7 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
     TType& type = block->getWritableType();
     TType& unitType = unitBlock->getWritableType();
     unitType.shallowCopy(type);
+    unit.globalUniformBlockName = unitType.getTypeName().c_str();
 }
 
 

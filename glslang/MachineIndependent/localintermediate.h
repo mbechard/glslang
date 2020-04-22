@@ -807,6 +807,7 @@ public:
     void merge(TInfoSink&, TIntermediate&);
     void finalCheck(TInfoSink&, bool keepUncalled);
 
+    void mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit);
     void mergeUniformObjects(TInfoSink& infoSink, TIntermediate& unit);
     void checkStageIO(TInfoSink&, TIntermediate&);
 
@@ -886,7 +887,6 @@ protected:
     void seedIdMap(TIdMaps& idMaps, int& maxId);
     void remapIds(const TIdMaps& idMaps, int idShift, TIntermediate&);
     void mergeBodies(TInfoSink&, TIntermSequence& globals, const TIntermSequence& unitGlobals);
-    void mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit, TIntermSequence& linkerObjects, TIntermSequence& unitLinkerObjects);
     void mergeLinkerObjects(TInfoSink&, TIntermSequence& linkerObjects, const TIntermSequence& unitLinkerObjects, EShLanguage);
     void mergeImplicitArraySizes(TType&, const TType&);
     void mergeErrorCheck(TInfoSink&, const TIntermSymbol&, const TIntermSymbol&, EShLanguage);
