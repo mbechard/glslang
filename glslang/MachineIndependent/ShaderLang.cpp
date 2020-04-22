@@ -2069,6 +2069,11 @@ bool TProgram::crossStageCheck(EShMessages messages) {
     }
     error |= uniforms.getNumErrors() != 0;
 
+    // copy final definition of global block back into each stage
+    for (unsigned int i = 0; i < activeStages.size(); ++i) {
+        activeStages[i]->mergeGlobalUniformBlocks(*infoSink, uniforms);
+    }
+
     // compare cross stage symbols for each stage boundary
     for (unsigned int i = 1; i < activeStages.size(); ++i) {
         activeStages[i - 1]->checkStageIO(*infoSink, *activeStages[i]);

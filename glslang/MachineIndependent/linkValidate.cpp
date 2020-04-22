@@ -106,6 +106,7 @@ void TIntermediate::mergeUniformObjects(TInfoSink& infoSink, TIntermediate& unit
     unitLinkerObjects.resize(end - unitLinkerObjects.begin());
 
     // merge uniforms and do error checking
+    mergeGlobalUniformBlocks(infoSink, unit);
     mergeLinkerObjects(infoSink, linkerObjects, unitLinkerObjects, unit.getStage());
 }
 
