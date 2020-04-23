@@ -498,11 +498,11 @@ public:
     }
     int getLocalSizeSpecId(int dim) const { return localSizeSpecId[dim]; }
 
-    void setGlobalUniformBlockName(std::string &name) {
+    void setGlobalUniformBlockName(const std::string &name) {
         globalUniformBlockName = name;
     }
-    TString getGlobalUniformBlockName() {
-        return globalUniformBlockName.c_str();
+    const std::string &getGlobalUniformBlockName() {
+        return globalUniformBlockName;
     }
 #ifdef GLSLANG_WEB
     void output(TInfoSink&, bool tree) { }

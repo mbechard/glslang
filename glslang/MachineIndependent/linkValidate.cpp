@@ -508,12 +508,19 @@ static inline bool isSameInterface(TIntermSymbol* symbol, EShLanguage stage, TIn
 }
 
 //
-// merge the members of the automatically generated Global Uniform Block linker objects
-// they may have different structs or different names and need to have made equivalent
-// for other linking stages
+// Global Unfiform block stores any default uniforms (i.e. uniforms without a block)
+// If two linked stages declare the same member, they are meant to be the same uniform
+// and need to be in the same block
+// merge the members of different stages to allow them to be linked properly
+// as a single block
 //
 void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit)
 {
+    if (globalUniformBlockName != unit.globalUniformBlockName) {
+        // different block names likely means different blocks
+        return;
+    }
+    
     TIntermSequence& linkerObjects = findLinkerObjects()->getSequence();
     TIntermSequence& unitLinkerObjects = unit.findLinkerObjects()->getSequence();
 
@@ -522,14 +529,14 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
         [this](const TIntermNode* node) -> bool {
             const TIntermSymbol* symbol = node->getAsSymbolNode();
             return symbol->getType().getBasicType() == EbtBlock && 
-                   symbol->getType().getShaderInterface() == EsiUniform && 
+                   symbol->getQualifier().storage == EvqUniform && 
                    symbol->getType().getTypeName() == this->globalUniformBlockName.c_str();
     });
     auto itUnitBlock = std::find_if(unitLinkerObjects.begin(), unitLinkerObjects.end(),
         [&unit](const TIntermNode* node) -> bool {
             const TIntermSymbol* symbol = node->getAsSymbolNode();
             return symbol->getType().getBasicType() == EbtBlock && 
-                   symbol->getType().getShaderInterface() == EsiUniform && 
+                   symbol->getQualifier().storage == EvqUniform &&
                    symbol->getType().getTypeName() == unit.globalUniformBlockName.c_str();
     });
 
@@ -554,8 +561,7 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
     // merge the struct
     // order of declarations doesn't matter and they matched based on member name
     TTypeList* memberList = block->getType().getWritableStruct();
-    const TTypeList* unitMemberList = unitBlock->getType().getStruct();
-
+    TTypeList* unitMemberList = unitBlock->getType().getWritableStruct();
 
     unsigned int memberListStartSize = memberList->size();
     for (unsigned int i = 0; i < unitMemberList->size(); ++i) {
@@ -578,19 +584,12 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
             }
         }
         if (merge) {
-            TType* type = new TType;
-            type->shallowCopy(*(*unitMemberList)[i].type);
-            type->setFieldName((*unitMemberList)[i].type->getFieldName());
-            TTypeLoc typeLoc = { type, (*unitMemberList)[i].loc };
-            memberList->push_back(typeLoc);
+            memberList->push_back((*unitMemberList)[i]);
         }
     }
 
-    // merge block name and updated member list back to unitType
-    TType& type = block->getWritableType();
-    TType& unitType = unitBlock->getWritableType();
-    unitType.shallowCopy(type);
-    unit.globalUniformBlockName = unitType.getTypeName().c_str();
+    // copy member list back, so relative order is the same
+    (*unitMemberList) = (*memberList);
 }
 
 

@@ -2060,6 +2060,7 @@ bool TProgram::crossStageCheck(EShMessages messages) {
     TIntermAggregate root(EOpSequence);
     root.getSequence().push_back(&uniformObjects);
     uniforms.setTreeRoot(&root);
+    uniforms.setGlobalUniformBlockName(activeStages.front()->getGlobalUniformBlockName());
 
     bool error = false;
 

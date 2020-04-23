@@ -383,6 +383,7 @@ struct TSymbolValidater
                     auto ent2 = uniformVarMap[i]->find(name);
                     if (ent2 != uniformVarMap[i]->end()) {
                         if (!ent2->second.symbol->getType().sameElementType(type)) {
+                            ent2->second.symbol->getType().sameElementType(type);
                             TString err = "Invalid Uniform variable type : " + entKey.first;
                             infoSink.info.message(EPrefixInternalError, err.c_str());
                             hadError = true;
