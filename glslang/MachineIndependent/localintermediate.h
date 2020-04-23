@@ -497,6 +497,13 @@ public:
         return true;
     }
     int getLocalSizeSpecId(int dim) const { return localSizeSpecId[dim]; }
+
+    void setGlobalUniformBlockName(std::string &name) {
+        globalUniformBlockName = name;
+    }
+    TString getGlobalUniformBlockName() {
+        return globalUniformBlockName.c_str();
+    }
 #ifdef GLSLANG_WEB
     void output(TInfoSink&, bool tree) { }
 
@@ -800,6 +807,7 @@ public:
     void merge(TInfoSink&, TIntermediate&);
     void finalCheck(TInfoSink&, bool keepUncalled);
 
+    void mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit);
     void mergeUniformObjects(TInfoSink& infoSink, TIntermediate& unit);
     void checkStageIO(TInfoSink&, TIntermediate&);
 
@@ -966,6 +974,7 @@ protected:
     ComputeDerivativeMode computeDerivativeMode;
     int primitives;
     int numTaskNVBlocks;
+    std::string globalUniformBlockName;
 
     // Base shift values
     std::array<unsigned int, EResCount> shiftBinding;

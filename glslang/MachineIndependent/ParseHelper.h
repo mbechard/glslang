@@ -288,7 +288,7 @@ public:
     bool parseShaderStrings(TPpContext&, TInputScanner& input, bool versionWillBeError = false) override;
     void parserError(const char* s);     // for bison's yyerror
 
-    virtual const char* getGlobalUniformBlockName() const override { return "gl_GlobalUniformBlock"; }
+    virtual const char* getGlobalUniformBlockName() const override { return "gl_DefaultUniformBlock"; }
     virtual void setUniformBlockDefaults(TType& block) const override
     {
         block.getQualifier().layoutPacking = ElpStd140;
