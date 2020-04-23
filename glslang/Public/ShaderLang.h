@@ -910,6 +910,7 @@ public:
 
 protected:
     bool linkStage(EShLanguage, EShMessages);
+    bool crossStageCheck(EShMessages);
 
     TPoolAllocator* pool;
     std::list<TShader*> stages[EShLangCount];
