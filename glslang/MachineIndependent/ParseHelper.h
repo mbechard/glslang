@@ -155,6 +155,9 @@ public:
     // Manage the global uniform block (default uniforms in GLSL, $Global in HLSL)
     virtual void growGlobalUniformBlock(const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
 
+    // Manage global buffer (used for backing default uniform atomic uints in GLSL)
+    virtual void growGlobalBuffer(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
+
     // Potentially rename shader entry point function
     void renameShaderFunction(TString*& name) const
     {
@@ -225,7 +228,15 @@ protected:
     // override this to set the language-specific name
     virtual const char* getGlobalUniformBlockName() const { return ""; }
     virtual void setUniformBlockDefaults(TType&) const { }
-    virtual void finalizeGlobalUniformBlockLayout(TVariable&) { }
+    virtual void finalizeGlobalUniformBlockLayout(TVariable&) {}
+
+    virtual const char* getGlobalBufferName() const { return ""; }
+    virtual void setBufferDefaults(TType&) const {}
+    virtual void finalizeGlobalBufferLayout(TVariable&) {}
+    TVector<TVariable*> globalBuffers;
+    TVector<int> bufferFirstNewMember;
+    unsigned int globalBufferSet;
+
     virtual void outputMessage(const TSourceLoc&, const char* szReason, const char* szToken,
                                const char* szExtraInfoFormat, TPrefixType prefix,
                                va_list args);
@@ -300,6 +311,13 @@ public:
     bool lineContinuationCheck(const TSourceLoc&, bool endOfComment) override;
     bool lineDirectiveShouldSetNextLine() const override;
     bool builtInName(const TString&);
+
+    virtual const char* getGlobalBufferName() const override { return "gl_GlobalBuffer"; }
+    virtual void setBufferDefaults(TType& block) const override
+    {
+        block.getQualifier().layoutPacking = ElpStd430;
+        block.getQualifier().layoutMatrix = ElmRowMajor;
+    }
 
     void handlePragma(const TSourceLoc&, const TVector<TString>&) override;
     TIntermTyped* handleVariable(const TSourceLoc&, TSymbol* symbol, const TString* string);

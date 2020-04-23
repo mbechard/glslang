@@ -6536,10 +6536,13 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
 
     if (symbol == nullptr && spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) { // xxTODO: move other checks and etc. into functions
         if (!parsingBuiltins && !symbolTable.atBuiltInLevel() && symbolTable.atGlobalLevel() &&
-            type.getQualifier().storage == EvqUniform && type.containsNonOpaque()) {
-            // xxTODO: set these base on compiler params
-            globalUniformBinding = 0;
-            globalUniformSet = 10;
+            type.getQualifier().storage == EvqUniform &&
+            (type.containsNonOpaque() || type.getBasicType() == EbtAtomicUint)) {
+
+            // use buffer block instead of uniform block for atomic ints,
+            // so they can be written
+            bool useBuffer = type.getBasicType() == EbtAtomicUint;
+
             // xxTODO: how will arrays be handled here...
             // xxTODO: In the case that uniform is a struct:
             //        Hlsl parser has a copy of the struct's member list that it passes (to replace the shallow copy of the member list)
@@ -6551,8 +6554,12 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             //    if (it != ioTypeMap.end() && it->second.uniform)
             //        newTypeList = it->second.uniform;
             //}
-
-            warn(loc, "moving uniform into global uniform block", identifier.c_str(), ""); // xxTODO: finalize text in warning
+            if (!useBuffer) {
+                warn(loc, "moving uniform into global uniform block", identifier.c_str(), ""); // xxTODO: finalize text in warning
+            }
+            else {
+                warn(loc, "moving uniform into global buffer block", identifier.c_str(), ""); // xxTODO: finalize text in warning
+            }
 
             if (type.getQualifier().hasLocation()) {
                 // xxTODO: do we want to ignore qualifiers here?
@@ -6561,27 +6568,54 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             }
 
             if (initializer) {
-              // xxTODO: do we want invalid initializers to still have compile errors?
+                // xxTODO: do we want invalid initializers to still have compile errors?
                 initializer = nullptr;
                 warn(loc, "ignoring initializer", identifier.c_str(), "");  // xxTODO: finalize text in warning
             }
 
-            if (type.isArray()) { // if (type.isArray())
+            if (type.isArray()) {
+                // do array size checks here
                 arraySizesCheck(loc, type.getQualifier(), type.getArraySizes(), initializer, false);
 
                 if (arrayQualifierError(loc, type.getQualifier()) || arrayError(loc, type)) {
                     error(loc, "array param error", identifier.c_str(), "");
                 }
             }
-            
-            // layoutTypeCheck(loc, type); // Included in the Object Check after creation
-            
-            growGlobalUniformBlock(loc, type, identifier, nullptr);
+
+            // do some checking on the type as it was declared
+            layoutTypeCheck(loc, type);
+
+            int bufferBinding = TQualifier::layoutBindingEnd;
+
+            if (type.getBasicType() == EbtAtomicUint) {
+                warn(loc, "representing atomic_uint as uint", identifier.c_str(), "");
+                
+                type.setBasicType(EbtUint);
+                type.getQualifier().storage = EvqBuffer;
+
+                bufferBinding = type.getQualifier().layoutBinding;
+                type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
+            }
+
+            if (!useBuffer) {
+                // xxTODO: set these base on compiler params
+                globalUniformBinding = 0;
+                globalUniformSet = 10;
+                growGlobalUniformBlock(loc, type, identifier, nullptr);
+            }
+            else {
+                // xxTODO: set these base on compiler params
+                globalBufferSet = 11;
+                growGlobalBuffer(bufferBinding, loc, type, identifier, nullptr);
+            }
             symbol = symbolTable.find(identifier);
 
             if (!symbol) {
-                error(loc, "error adding uniform to global uniform block", identifier.c_str(), ""); 
+                error(loc, "error adding uniform to global uniform block", identifier.c_str(), "");
             }
+
+            // xxTODO: merge qualifiers?
+            //mergeObjectLayoutQualifiers(globalUniformBlock->getType().getQualifier(), type.getQualifier(), true);
 
             layoutObjectCheck(loc, *symbol); // xxTODO: good idea to do this for the member? do we want to do type-qualifier checks before creation instead?
 
@@ -6590,14 +6624,14 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
                 auto blockQualifier = globalUniformBlock->getType().getQualifier();
                 auto typeList = *globalUniformBlock->getWritableType().getWritableStruct();
                 bool memberWithLocation = false; // no locations allowed;
-                bool memberWithoutLocation = true;
+                bool memberWithoutLocation = true; warn(loc, "ignoring layout qualifier 'location'", identifier.c_str(), "");
 
                 // xxTODO: most of these checks won't do anything, since we're uniforms...
                 //        not sure if we need them to catch disallowed qualifiers (e.g. xfb_..) will test
                 //fixBlockLocations(loc, blockQualifier, typeList, memberWithLocation, memberWithoutLocation); // won't matter, no locations
                 //fixXfbOffsets(currentBlockQualifier, typeList);   // won't matter, no xfb
                 fixBlockUniformOffsets(currentBlockQualifier, typeList); // xxTODO: the glslangToSpv module appears to generate offsets on its own, so we don't need to explicitly set it for the members; still probably a good thing to do?
-                
+
                 layoutObjectCheck(loc, *globalUniformBlock);
             }
 

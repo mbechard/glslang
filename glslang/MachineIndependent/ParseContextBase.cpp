@@ -625,6 +625,58 @@ void TParseContextBase::growGlobalUniformBlock(const TSourceLoc& loc, TType& mem
     ++firstNewMember;
 }
 
+void TParseContextBase::growGlobalBuffer(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList) {
+    // Make the global block, if not yet made.
+    if (globalBuffers.size() >= binding) {
+        globalBuffers.resize(binding + 1);
+        bufferFirstNewMember.resize(binding + 1);
+    }
+
+    TVariable*& globalBuffer = globalBuffers[binding];
+    int& bufferNewMember = bufferFirstNewMember[binding];
+
+    if (globalBuffer == nullptr) {
+        TQualifier blockQualifier;
+        blockQualifier.clear();
+        blockQualifier.storage = EvqBuffer;
+        
+        char charBuffer[128];
+        sprintf_s(charBuffer, 128, "%s%d", getGlobalBufferName(), binding);
+        
+        TType blockType(new TTypeList, *NewPoolTString(charBuffer), blockQualifier);
+        setUniformBlockDefaults(blockType);
+        globalBuffer = new TVariable(NewPoolTString(""), blockType, true);
+        bufferNewMember = 0;
+    }
+
+    // Update with binding and set
+    globalBuffer->getWritableType().getQualifier().layoutBinding = binding;
+    globalBuffer->getWritableType().getQualifier().layoutSet = globalBufferSet;
+
+    // Add the requested member as a member to the global block.
+    TType* type = new TType;
+    type->shallowCopy(memberType);
+    type->setFieldName(memberName);
+    if (typeList)
+        type->setStruct(typeList);
+    TTypeLoc typeLoc = {type, loc};
+    globalBuffer->getType().getWritableStruct()->push_back(typeLoc);
+
+    // Insert into the symbol table.
+    if (bufferNewMember == 0) {
+        // This is the first request; we need a normal symbol table insert
+        if (symbolTable.insert(*globalBuffer))
+            trackLinkage(*globalBuffer);
+        else
+            error(loc, "failed to insert the global constant buffer", "buffer", "");
+    } else {
+        // This is a follow-on request; we need to amend the first insert
+        symbolTable.amend(*globalBuffer, bufferNewMember);
+    }
+
+    ++bufferNewMember;
+}
+
 void TParseContextBase::finish()
 {
     if (parsingBuiltins)

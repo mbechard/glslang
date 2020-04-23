@@ -1570,7 +1570,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "\n");
     }
 
-    if (spvVersion.vulkan == 0) {
+    if (spvVersion.vulkan == 0 || spvVersion.vulkanRelaxed) {
         //
         // Atomic counter functions.
         //
