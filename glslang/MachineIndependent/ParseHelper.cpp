@@ -1682,6 +1682,7 @@ void TParseContext::memorySemanticsCheck(const TSourceLoc& loc, const TFunction&
     // Grab the semantics and storage class semantics from the operands, based on opcode
     switch (callNode.getOp()) {
     case EOpAtomicAdd:
+    case EOpAtomicSubtract:
     case EOpAtomicMin:
     case EOpAtomicMax:
     case EOpAtomicAnd:
@@ -2098,6 +2099,7 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
     }
 
     case EOpAtomicAdd:
+    case EOpAtomicSubtract:
     case EOpAtomicMin:
     case EOpAtomicMax:
     case EOpAtomicAnd:
@@ -6593,7 +6595,13 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
                 type.setBasicType(EbtUint);
                 type.getQualifier().storage = EvqBuffer;
 
-                bufferBinding = type.getQualifier().layoutBinding;
+                type.getQualifier().volatil = true;
+                type.getQualifier().coherent = true;
+
+                // xxTODO: use binding and offset layout parameters
+                //         to make buffer layout match appropriately
+                //bufferBinding = type.getQualifier().layoutBinding;
+                bufferBinding = TQualifier::layoutBindingEnd; 
                 type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
             }
 
@@ -6604,8 +6612,6 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
                 updatedBlock = globalUniformBlock;
             }
             else {
-                // xxTODO: set these base on compiler params
-                globalBufferSet = 11;
                 growGlobalBuffer(bufferBinding, loc, type, identifier, nullptr);
                 updatedBlock = globalBuffers[bufferBinding];
             }

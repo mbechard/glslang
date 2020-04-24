@@ -1570,7 +1570,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "\n");
     }
 
-    if (spvVersion.vulkan == 0 || spvVersion.vulkanRelaxed) {
+    if (spvVersion.vulkan == 0) {
         //
         // Atomic counter functions.
         //
@@ -1594,6 +1594,36 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                 "uint atomicCounterXor(atomic_uint, uint);"
                 "uint atomicCounterExchange(atomic_uint, uint);"
                 "uint atomicCounterCompSwap(atomic_uint, uint, uint);"
+
+                "\n");
+        }
+    }
+    else if (spvVersion.vulkanRelaxed) {
+        //
+        // Atomic counter functions act as aliases to normal atomic functions.
+        // replace definitions to take 'uint' instead of 'atomic_uint'
+        // and map to equivalent non-counter atomic op
+        //
+        if ((profile != EEsProfile && version >= 300) ||
+            (profile == EEsProfile && version >= 310)) {
+            commonBuiltins.append(
+                "uint atomicCounterIncrement(uint);"
+                "uint atomicCounterDecrement(uint);"
+                "uint atomicCounter(uint);"
+
+                "\n");
+        }
+        if (profile != EEsProfile && version >= 460) {
+            commonBuiltins.append(
+                "uint atomicCounterAdd(uint, uint);"
+                "uint atomicCounterSubtract(uint, uint);"
+                "uint atomicCounterMin(uint, uint);"
+                "uint atomicCounterMax(uint, uint);"
+                "uint atomicCounterAnd(uint, uint);"
+                "uint atomicCounterOr(uint, uint);"
+                "uint atomicCounterXor(uint, uint);"
+                "uint atomicCounterExchange(uint, uint);"
+                "uint atomicCounterCompSwap(uint, uint, uint);"
 
                 "\n");
         }
@@ -8592,6 +8622,23 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
     symbolTable.relateToOperator("atomicCounterDecrement", EOpAtomicCounterDecrement);
     symbolTable.relateToOperator("atomicCounter",          EOpAtomicCounter);
 
+    if (spvVersion.vulkanRelaxed) {
+        //
+        // functions signature have been replaced to take uint operations
+        // remap atomic counter functions to atomic operations
+        //
+        //      note: that EOpAtomicCounterIncrement and EOpAtomicCounterDecrement will 
+        //      still generate valid spirV: they map to OpAtomicIIncrement, OpAtomicIDecrement, and OpAtomicLoad,
+        //      which don't require any spirV capabilties or extensions to use on uints
+        //
+        //      todo: will change update this to produce a valid AST (i.e. not using AtomicCounter ops on non-AC vars)
+        //            but this works for now
+        //
+        symbolTable.relateToOperator("atomicCounterIncrement", EOpAtomicCounterIncrement);
+        symbolTable.relateToOperator("atomicCounterDecrement", EOpAtomicCounterDecrement);
+        symbolTable.relateToOperator("atomicCounter", EOpAtomicCounter);
+    }
+
     symbolTable.relateToOperator("clockARB",     EOpReadClockSubgroupKHR);
     symbolTable.relateToOperator("clock2x32ARB", EOpReadClockSubgroupKHR);
 
@@ -8608,6 +8655,23 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("atomicCounterXor",      EOpAtomicCounterXor);
         symbolTable.relateToOperator("atomicCounterExchange", EOpAtomicCounterExchange);
         symbolTable.relateToOperator("atomicCounterCompSwap", EOpAtomicCounterCompSwap);
+    }
+
+    if (spvVersion.vulkanRelaxed) {
+        //
+        // functions signature have been replaced to take 'uint' instead of 'atomic_uint'
+        // remap atomic counter functions to non-counter atomic ops so
+        // functions act as aliases to non-counter atomic ops
+        //
+        symbolTable.relateToOperator("atomicCounterAdd", EOpAtomicAdd);
+        symbolTable.relateToOperator("atomicCounterSubtract", EOpAtomicSubtract);
+        symbolTable.relateToOperator("atomicCounterMin", EOpAtomicMin);
+        symbolTable.relateToOperator("atomicCounterMax", EOpAtomicMax);
+        symbolTable.relateToOperator("atomicCounterAnd", EOpAtomicAnd);
+        symbolTable.relateToOperator("atomicCounterOr", EOpAtomicOr);
+        symbolTable.relateToOperator("atomicCounterXor", EOpAtomicXor);
+        symbolTable.relateToOperator("atomicCounterExchange", EOpAtomicExchange);
+        symbolTable.relateToOperator("atomicCounterCompSwap", EOpAtomicCompSwap);
     }
 
     symbolTable.relateToOperator("fma",               EOpFma);
