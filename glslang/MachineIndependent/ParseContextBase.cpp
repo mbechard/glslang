@@ -627,9 +627,10 @@ void TParseContextBase::growGlobalUniformBlock(const TSourceLoc& loc, TType& mem
 
 void TParseContextBase::growGlobalBuffer(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList) {
     // Make the global block, if not yet made.
-    if (globalBuffers.size() >= binding) {
-        globalBuffers.resize(binding + 1);
-        bufferFirstNewMember.resize(binding + 1);
+    auto &at  = globalBuffers.find(binding);
+    if (at == globalBuffers.end()) {
+        globalBuffers.insert({binding, (TVariable*)nullptr });
+        bufferFirstNewMember.insert({binding, 0});
     }
 
     TVariable*& globalBuffer = globalBuffers[binding];

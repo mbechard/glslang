@@ -90,7 +90,8 @@ public:
             limits(resources.limits),
             globalUniformBlock(nullptr),
             globalUniformBinding(TQualifier::layoutBindingEnd),
-            globalUniformSet(TQualifier::layoutSetEnd)
+            globalUniformSet(TQualifier::layoutSetEnd),
+            globalBufferSet(TQualifier::layoutSetEnd)
     {
         if (entryPoint != nullptr)
             sourceEntryPointName = *entryPoint;
@@ -233,8 +234,8 @@ protected:
     virtual const char* getGlobalBufferName() const { return ""; }
     virtual void setBufferDefaults(TType&) const {}
     virtual void finalizeGlobalBufferLayout(TVariable&) {}
-    TVector<TVariable*> globalBuffers;
-    TVector<int> bufferFirstNewMember;
+    TMap<int, TVariable*> globalBuffers;
+    TMap<int, int> bufferFirstNewMember;
     unsigned int globalBufferSet;
 
     virtual void outputMessage(const TSourceLoc&, const char* szReason, const char* szToken,

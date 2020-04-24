@@ -6599,8 +6599,6 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
 
             if (!useBuffer) {
                 // xxTODO: set these base on compiler params
-                globalUniformBinding = 0;
-                globalUniformSet = 10;
                 growGlobalUniformBlock(loc, type, identifier, nullptr);
             }
             else {
