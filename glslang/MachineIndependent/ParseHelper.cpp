@@ -6543,36 +6543,16 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
 
             // use buffer block instead of uniform block for atomic ints,
             // so they can be written
-            bool useBuffer = type.getBasicType() == EbtAtomicUint;
-
-            // xxTODO: how will arrays be handled here...
-            // xxTODO: In the case that uniform is a struct:
-            //        Hlsl parser has a copy of the struct's member list that it passes (to replace the shallow copy of the member list)
-            //        they do this because the HLSL struct can have mixed uniform/in/out members, and they need JUST the uniforms
-            //        that's needed here BUT make sure the shallow copy is safe (i.e. the PublicType that the member list comes from won't get deleted out from under us at any point)
-            //        There's no special handling of structs elswhere, so I think we're safe ??
-            //if (type.isStruct()) {
-            //    auto it = ioTypeMap.find(memberType.getStruct());
-            //    if (it != ioTypeMap.end() && it->second.uniform)
-            //        newTypeList = it->second.uniform;
-            //}
-            if (!useBuffer) {
-                warn(loc, "moving uniform into global uniform block", identifier.c_str(), ""); // xxTODO: finalize text in warning
-            }
-            else {
-                warn(loc, "moving uniform into global buffer block", identifier.c_str(), ""); // xxTODO: finalize text in warning
-            }
+            bool useBuffer = (type.getBasicType() == EbtAtomicUint);
 
             if (type.getQualifier().hasLocation()) {
-                // xxTODO: do we want to ignore qualifiers here?
-                warn(loc, "ignoring layout qualifier 'location'", identifier.c_str(), ""); // xxTODO: finalize text in warning
+                warn(loc, "ignoring layout qualifier for uniform", identifier.c_str(), "location");
                 type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
             }
 
             if (initializer) {
-                // xxTODO: do we want invalid initializers to still have compile errors?
+                warn(loc, "Ignoring initializer for uniform", identifier.c_str(), "");
                 initializer = nullptr;
-                warn(loc, "ignoring initializer", identifier.c_str(), "");  // xxTODO: finalize text in warning
             }
 
             if (type.isArray()) {
@@ -6590,8 +6570,6 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             int bufferBinding = TQualifier::layoutBindingEnd;
 
             if (type.getBasicType() == EbtAtomicUint) {
-                warn(loc, "representing atomic_uint as uint", identifier.c_str(), "");
-                
                 type.setBasicType(EbtUint);
                 type.getQualifier().storage = EvqBuffer;
 
