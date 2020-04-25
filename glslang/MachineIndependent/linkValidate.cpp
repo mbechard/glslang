@@ -102,7 +102,8 @@ void TIntermediate::mergeUniformObjects(TInfoSink& infoSink, TIntermediate& unit
 
     // filter unitLinkerObjects to only contain uniforms
     auto end = std::remove_if(unitLinkerObjects.begin(), unitLinkerObjects.end(),
-        [](TIntermNode* node) {return node->getAsSymbolNode()->getQualifier().storage != EvqUniform; });
+        [](TIntermNode* node) {return node->getAsSymbolNode()->getQualifier().storage != EvqUniform &&
+                                      node->getAsSymbolNode()->getQualifier().storage != EvqBuffer; });
     unitLinkerObjects.resize(end - unitLinkerObjects.begin());
 
     // merge uniforms and do error checking
@@ -516,47 +517,56 @@ static inline bool isSameInterface(TIntermSymbol* symbol, EShLanguage stage, TIn
 //
 void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate& unit)
 {
-    if (globalUniformBlockName != unit.globalUniformBlockName) {
-        // different block names likely means different blocks
-        return;
-    }
-    
     TIntermSequence& linkerObjects = findLinkerObjects()->getSequence();
     TIntermSequence& unitLinkerObjects = unit.findLinkerObjects()->getSequence();
 
-    // Error check and merge the linker objects (duplicates should not be created)
-    auto itBlock = std::find_if(linkerObjects.begin(), linkerObjects.end(), 
-        [this](const TIntermNode* node) -> bool {
-            const TIntermSymbol* symbol = node->getAsSymbolNode();
-            return symbol->getType().getBasicType() == EbtBlock && 
-                   symbol->getQualifier().storage == EvqUniform && 
-                   symbol->getType().getTypeName() == this->globalUniformBlockName.c_str();
-    });
-    auto itUnitBlock = std::find_if(unitLinkerObjects.begin(), unitLinkerObjects.end(),
-        [&unit](const TIntermNode* node) -> bool {
-            const TIntermSymbol* symbol = node->getAsSymbolNode();
-            return symbol->getType().getBasicType() == EbtBlock && 
-                   symbol->getQualifier().storage == EvqUniform &&
-                   symbol->getType().getTypeName() == unit.globalUniformBlockName.c_str();
-    });
+    // merge global uniform block
+    TIntermSymbol* block = findGlobalUniformBlock();
+    TIntermSymbol* unitBlock = unit.findGlobalUniformBlock();
 
-    // if it's absent from either stage or their types are the same, it can be merged normally
-    if (itUnitBlock == unitLinkerObjects.end()) {
+    if  (unitBlock && block) {
+        mergeBlockDefinitions(infoSink, block, unitBlock);
+    }
+    else if (unitBlock && !block){
+        // merge unitBlock directly
+        linkerObjects.push_back(unitBlock);
+        globalUniformBlock = unitBlock;
+    }
+
+    // merge global buffer blocks
+    std::map<int, TIntermSymbol*>& bufferBlocks = getGlobalBufferBlocks();
+    const std::map<int, TIntermSymbol*>& unitBufferBlocks = unit.getGlobalBufferBlocks();
+
+    auto itUnitBlock = unitBufferBlocks.begin();
+    for (; itUnitBlock != unitBufferBlocks.end(); itUnitBlock++) {
+        int binding = (*itUnitBlock).second->getAsSymbolNode()->getQualifier().layoutBinding;
+        auto itBlock = bufferBlocks.find(binding);
+
+        if (itBlock == bufferBlocks.end()) {
+            linkerObjects.push_back((*itUnitBlock).second);
+            bufferBlocks[binding] = (*itUnitBlock).second;
+            continue;
+        }
+
+        TIntermSymbol* bufferBlock = (*itBlock).second->getAsSymbolNode();
+        TIntermSymbol* unitBufferBlock = (*itUnitBlock).second->getAsSymbolNode();
+
+        mergeBlockDefinitions(infoSink, bufferBlock, unitBufferBlock);
+    }
+}
+
+void TIntermediate::mergeBlockDefinitions(TInfoSink& infoSink, TIntermSymbol* block, TIntermSymbol* unitBlock) {
+    if (block->getType() == unitBlock->getType()) {
         return;
     }
 
-    if (itBlock == linkerObjects.end()) {
-        linkerObjects.push_back(*itUnitBlock);
-        globalUniformBlockName = (*itUnitBlock)->getAsSymbolNode()->getType().getTypeName().c_str();
+    if (block->getType().getTypeName() != unitBlock->getType().getTypeName() ||
+        block->getType().getBasicType() != unitBlock->getType().getBasicType() ||
+        block->getQualifier().storage != unitBlock->getQualifier().storage ||
+        block->getQualifier().layoutSet != unitBlock->getQualifier().layoutSet) {
+        // different block names likely means different blocks
         return;
     }
-
-    if ((*itBlock)->getAsTyped()->getType() == (*itUnitBlock)->getAsTyped()->getType()) {
-        return;
-    }
-
-    TIntermSymbol* block = (*itBlock)->getAsSymbolNode();
-    TIntermSymbol* unitBlock = (*itUnitBlock)->getAsSymbolNode();
 
     // merge the struct
     // order of declarations doesn't matter and they matched based on member name
@@ -592,7 +602,6 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
     (*unitMemberList) = (*memberList);
 }
 
-
 //
 // Merge the linker objects from unitLinkerObjects into linkerObjects.
 // Duplication is expected and filtered out, but contradictions are an error.
@@ -613,11 +622,11 @@ void TIntermediate::mergeLinkerObjects(TInfoSink& infoSink, TIntermSequence& lin
             // match by the block-name, not the identifier name.
             if (symbol->getType().getBasicType() == EbtBlock && unitSymbol->getType().getBasicType() == EbtBlock) {
                 if (getStage() == unitStage && symbol->getType().getShaderInterface() == unitSymbol->getType().getShaderInterface()) {
+                    // matching in same shader stage
                     isSameSymbol = symbol->getType().getTypeName() == unitSymbol->getType().getTypeName();
                 }
-                else if (symbol->getType().getShaderInterface() == EsiUniform && unitSymbol->getType().getShaderInterface() == EsiUniform ||
-                    getStage() < unitStage && symbol->getType().getShaderInterface() == EsiInput && unitSymbol->getType().getShaderInterface() == EsiOutput ||
-                    unitStage < getStage() && symbol->getType().getShaderInterface() == EsiOutput && unitSymbol->getType().getShaderInterface() == EsiInput) {
+                else if (isSameInterface(symbol, getStage(), unitSymbol, unitStage)) {
+                    // matching accross stages
                     isSameSymbol = symbol->getType().getTypeName() == unitSymbol->getType().getTypeName();
                 }
             }

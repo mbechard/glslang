@@ -157,7 +157,7 @@ public:
     virtual void growGlobalUniformBlock(const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
 
     // Manage global buffer (used for backing default uniform atomic uints in GLSL)
-    virtual void growGlobalBuffer(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
+    virtual void growGlobalBufferBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
 
     // Potentially rename shader entry point function
     void renameShaderFunction(TString*& name) const
@@ -231,12 +231,21 @@ protected:
     virtual void setUniformBlockDefaults(TType&) const { }
     virtual void finalizeGlobalUniformBlockLayout(TVariable&) {}
 
-    virtual const char* getGlobalBufferName() const { return ""; }
-    virtual void setBufferDefaults(TType&) const {}
-    virtual void finalizeGlobalBufferLayout(TVariable&) {}
+    // Manage the global uniform block (used for default atomic_uints with Vulkan-Relaxed)
     TMap<int, TVariable*> globalBuffers;
-    TMap<int, int> bufferFirstNewMember;
     unsigned int globalBufferSet;
+    TMap<int, int> bufferFirstNewMember;
+    // override this to set the language-specific name
+    virtual const char* getGlobalBufferBlockName() const { return ""; }
+    virtual void setBufferBlockDefaults(TType&) const {}
+    virtual void finalizeGlobalBufferBlockLayout(TVariable&) {}
+    bool isGlobalBufferBlock(const TSymbol& symbol) {
+        const TVariable* var = symbol.getAsVariable();
+        if (!var)
+            return false;
+        auto& at = globalBuffers.find(var->getType().getQualifier().layoutBinding);
+        return (at != globalBuffers.end() && (*at).second->getType() == var->getType());
+    }
 
     virtual void outputMessage(const TSourceLoc&, const char* szReason, const char* szToken,
                                const char* szExtraInfoFormat, TPrefixType prefix,
@@ -313,8 +322,8 @@ public:
     bool lineDirectiveShouldSetNextLine() const override;
     bool builtInName(const TString&);
 
-    virtual const char* getGlobalBufferName() const override { return "gl_GlobalBuffer"; }
-    virtual void setBufferDefaults(TType& block) const override
+    virtual const char* getGlobalBufferBlockName() const override { return "gl_DefaultBufferBlock"; }
+    virtual void setBufferBlockDefaults(TType& block) const override
     {
         block.getQualifier().layoutPacking = ElpStd430;
         block.getQualifier().layoutMatrix = ElmRowMajor;

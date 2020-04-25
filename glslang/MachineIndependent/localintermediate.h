@@ -265,6 +265,7 @@ public:
         computeDerivativeMode(LayoutDerivativeNone),
         primitives(TQualifier::layoutNotSet),
         numTaskNVBlocks(0),
+        globalUniformBlock(nullptr),
         autoMapBindings(false),
         autoMapLocations(false),
         flattenUniformArrays(false),
@@ -472,6 +473,16 @@ public:
     void addSymbolLinkageNodes(TIntermAggregate*& linkage, EShLanguage, TSymbolTable&);
     void addSymbolLinkageNode(TIntermAggregate*& linkage, const TSymbol&);
 
+    void setGlobalUniformBlock(TIntermAggregate*& linkage, const TSymbol& newBlock);
+    void addGlobalBufferBlock(TIntermAggregate*& linkage, const TSymbol& newBlock);
+
+    TIntermSymbol* findGlobalUniformBlock() {
+        return globalUniformBlock;
+    }
+    std::map<int, TIntermSymbol*> &getGlobalBufferBlocks() {
+        return globalBufferBlocks;
+    }
+
     void setUseStorageBuffer()
     {
         useStorageBuffer = true;
@@ -498,12 +509,6 @@ public:
     }
     int getLocalSizeSpecId(int dim) const { return localSizeSpecId[dim]; }
 
-    void setGlobalUniformBlockName(const std::string &name) {
-        globalUniformBlockName = name;
-    }
-    const std::string &getGlobalUniformBlockName() {
-        return globalUniformBlockName;
-    }
 #ifdef GLSLANG_WEB
     void output(TInfoSink&, bool tree) { }
 
@@ -888,6 +893,7 @@ protected:
     void remapIds(const TIdMaps& idMaps, int idShift, TIntermediate&);
     void mergeBodies(TInfoSink&, TIntermSequence& globals, const TIntermSequence& unitGlobals);
     void mergeLinkerObjects(TInfoSink&, TIntermSequence& linkerObjects, const TIntermSequence& unitLinkerObjects, EShLanguage);
+    void mergeBlockDefinitions(TInfoSink&, TIntermSymbol* block, TIntermSymbol* unitBlock);
     void mergeImplicitArraySizes(TType&, const TType&);
     void mergeErrorCheck(TInfoSink&, const TIntermSymbol&, const TIntermSymbol&, EShLanguage);
     void checkCallGraphCycles(TInfoSink&);
@@ -974,7 +980,8 @@ protected:
     ComputeDerivativeMode computeDerivativeMode;
     int primitives;
     int numTaskNVBlocks;
-    std::string globalUniformBlockName;
+    TIntermSymbol* globalUniformBlock;
+    std::map<int, TIntermSymbol*> globalBufferBlocks;
 
     // Base shift values
     std::array<unsigned int, EResCount> shiftBinding;

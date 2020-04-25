@@ -594,7 +594,6 @@ void TParseContextBase::growGlobalUniformBlock(const TSourceLoc& loc, TType& mem
         setUniformBlockDefaults(blockType);
         globalUniformBlock = new TVariable(NewPoolTString(""), blockType, true);
         firstNewMember = 0;
-        intermediate.setGlobalUniformBlockName(std::string(getGlobalUniformBlockName()));
     }
 
     // Update with binding and set
@@ -625,7 +624,7 @@ void TParseContextBase::growGlobalUniformBlock(const TSourceLoc& loc, TType& mem
     ++firstNewMember;
 }
 
-void TParseContextBase::growGlobalBuffer(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList) {
+void TParseContextBase::growGlobalBufferBlock(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList) {
     // Make the global block, if not yet made.
     auto &at  = globalBuffers.find(binding);
     if (at == globalBuffers.end()) {
@@ -642,7 +641,12 @@ void TParseContextBase::growGlobalBuffer(int binding, const TSourceLoc& loc, TTy
         blockQualifier.storage = EvqBuffer;
         
         char charBuffer[128];
-        sprintf_s(charBuffer, 128, "%s%d", getGlobalBufferName(), binding);
+        if (binding != TQualifier::layoutBindingEnd) {
+            sprintf_s(charBuffer, 128, "%s_%d", getGlobalBufferBlockName(), binding);
+        }
+        else {
+            sprintf_s(charBuffer, 128, "%s", getGlobalBufferBlockName());
+        }
         
         TType blockType(new TTypeList, *NewPoolTString(charBuffer), blockQualifier);
         setUniformBlockDefaults(blockType);
@@ -685,8 +689,20 @@ void TParseContextBase::finish()
 
     // Transfer the linkage symbols to AST nodes, preserving order.
     TIntermAggregate* linkage = new TIntermAggregate;
-    for (auto i = linkageSymbols.begin(); i != linkageSymbols.end(); ++i)
-        intermediate.addSymbolLinkageNode(linkage, **i);
+    for (auto i = linkageSymbols.begin(); i != linkageSymbols.end(); ++i) {
+        if (*i == globalUniformBlock) {
+            intermediate.setGlobalUniformBlock(linkage, **i);
+        }
+        else if (isGlobalBufferBlock(**i)) {
+            intermediate.addGlobalBufferBlock(linkage, **i);
+        }
+        else {
+            intermediate.addSymbolLinkageNode(linkage, **i);
+        }
+    }
+    
+    intermediate.addSymbolLinkageNode(linkage, *globalUniformBlock);
+
     intermediate.addSymbolLinkageNodes(linkage, getLanguage(), symbolTable);
 }
 

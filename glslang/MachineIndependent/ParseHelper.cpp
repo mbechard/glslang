@@ -6612,7 +6612,7 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
                 updatedBlock = globalUniformBlock;
             }
             else {
-                growGlobalBuffer(bufferBinding, loc, type, identifier, nullptr);
+                growGlobalBufferBlock(bufferBinding, loc, type, identifier, nullptr);
                 updatedBlock = globalBuffers[bufferBinding];
             }
 
@@ -6673,7 +6673,6 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             error(loc, "initializer requires a variable, not a member", identifier.c_str(), "");
             return nullptr;
         }
-        // xxTODO: how will uniform initializers handle VulkanRelaxed moving the uniform into a struct ??
         initNode = executeInitializer(loc, initializer, variable);
     }
 

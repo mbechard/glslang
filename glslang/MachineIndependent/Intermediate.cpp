@@ -2842,6 +2842,26 @@ void TIntermediate::addSymbolLinkageNode(TIntermAggregate*& linkage, const TSymb
     linkage = growAggregate(linkage, node);
 }
 
+void TIntermediate::setGlobalUniformBlock(TIntermAggregate*& linkage, const TSymbol& newBlock)
+{
+    addSymbolLinkageNode(linkage, newBlock);
+    TIntermSymbol* block = linkage->getSequence().back()->getAsSymbolNode();
+
+    assert(block && block->getType() == newBlock.getType());
+
+    globalUniformBlock = block;
+}
+void TIntermediate::addGlobalBufferBlock(TIntermAggregate*& linkage, const TSymbol& newBlock)
+{
+    addSymbolLinkageNode(linkage, newBlock);
+    TIntermSymbol* block = linkage->getSequence().back()->getAsSymbolNode();
+
+    assert(block && block->getType() == newBlock.getType());
+
+    int binding = newBlock.getType().getQualifier().layoutBinding;
+    globalBufferBlocks[binding] = block;
+}
+
 //
 // Add a caller->callee relationship to the call graph.
 // Assumes the strings are unique per signature.
