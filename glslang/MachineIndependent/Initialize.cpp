@@ -1601,29 +1601,29 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
     else if (spvVersion.vulkanRelaxed) {
         //
         // Atomic counter functions act as aliases to normal atomic functions.
-        // replace definitions to take 'uint' instead of 'atomic_uint'
+        // replace definitions to take 'volatile coherent uint' instead of 'atomic_uint'
         // and map to equivalent non-counter atomic op
         //
         if ((profile != EEsProfile && version >= 300) ||
             (profile == EEsProfile && version >= 310)) {
             commonBuiltins.append(
-                "uint atomicCounterIncrement(uint);"
-                "uint atomicCounterDecrement(uint);"
-                "uint atomicCounter(uint);"
+                "uint atomicCounterIncrement(volatile coherent uint);"
+                "uint atomicCounterDecrement(volatile coherent uint);"
+                "uint atomicCounter(volatile coherent uint);"
 
                 "\n");
         }
         if (profile != EEsProfile && version >= 460) {
             commonBuiltins.append(
-                "uint atomicCounterAdd(uint, uint);"
-                "uint atomicCounterSubtract(uint, uint);"
-                "uint atomicCounterMin(uint, uint);"
-                "uint atomicCounterMax(uint, uint);"
-                "uint atomicCounterAnd(uint, uint);"
-                "uint atomicCounterOr(uint, uint);"
-                "uint atomicCounterXor(uint, uint);"
-                "uint atomicCounterExchange(uint, uint);"
-                "uint atomicCounterCompSwap(uint, uint, uint);"
+                "uint atomicCounterAdd(volatile coherent uint, uint);"
+                "uint atomicCounterSubtract(volatile coherent uint, uint);"
+                "uint atomicCounterMin(volatile coherent uint, uint);"
+                "uint atomicCounterMax(volatile coherent uint, uint);"
+                "uint atomicCounterAnd(volatile coherent uint, uint);"
+                "uint atomicCounterOr(volatile coherent uint, uint);"
+                "uint atomicCounterXor(volatile coherent uint, uint);"
+                "uint atomicCounterExchange(volatile coherent uint, uint);"
+                "uint atomicCounterCompSwap(volatile coherent uint, uint, uint);"
 
                 "\n");
         }
