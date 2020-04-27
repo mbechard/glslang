@@ -4818,7 +4818,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
         if (spvVersion.vulkan > 0 && version >= 140 && spvVersion.vulkanRelaxed)
             stageBuiltins[EShLangVertex].append(
                 "in int gl_VertexID;"         // declare with 'in' qualifier
-                "in int gl_InstanceID;"       // xxTODO: at a glance, I can't find a difference between the treatment of regular 'varyingIn' qualifier and the special 'VertexID'/'InstanceID' qualifiers that GL glsl uses. Using a new declaration for now, but it might be possible to reuse the vertexID and InstanceID declarations...
+                "in int gl_InstanceID;"
                 );
 
         if (version >= 440) {
@@ -8627,16 +8627,13 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         // functions signature have been replaced to take uint operations
         // remap atomic counter functions to atomic operations
         //
-        //      note: that EOpAtomicCounterIncrement and EOpAtomicCounterDecrement will 
-        //      still generate valid spirV: they map to OpAtomicIIncrement, OpAtomicIDecrement, and OpAtomicLoad,
-        //      which don't require any spirV capabilties or extensions to use on uints
+        // these atomic counter functions do not match signatures of glsl
+        // atomic functions, so they will be remapped to semantically
+        // equivalent functions in the parser
         //
-        //      todo: will change update this to produce a valid AST (i.e. not using AtomicCounter ops on non-AC vars)
-        //            but this works for now
-        //
-        symbolTable.relateToOperator("atomicCounterIncrement", EOpAtomicCounterIncrement);
-        symbolTable.relateToOperator("atomicCounterDecrement", EOpAtomicCounterDecrement);
-        symbolTable.relateToOperator("atomicCounter", EOpAtomicCounter);
+        symbolTable.relateToOperator("atomicCounterIncrement", EOpNull);
+        symbolTable.relateToOperator("atomicCounterDecrement", EOpNull);
+        symbolTable.relateToOperator("atomicCounter", EOpNull);
     }
 
     symbolTable.relateToOperator("clockARB",     EOpReadClockSubgroupKHR);

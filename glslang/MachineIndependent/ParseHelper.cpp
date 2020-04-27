@@ -1103,6 +1103,14 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
 {
     TIntermTyped* result = nullptr;
 
+    if (spvVersion.vulkan != 0 && spvVersion.vulkanRelaxed) {
+        // allow calls that are invalid in Vulkan Semantics to be invisibily
+        // remapped to equivalent valid functions
+        result = vkRelaxedRemapFunctionCall(loc, function, arguments);
+        if (result)
+            return result;
+    }
+
     if (function->getBuiltInOp() == EOpArrayLength)
         result = handleLengthMethod(loc, function, arguments);
     else if (function->getBuiltInOp() != EOpNull) {
@@ -6423,6 +6431,66 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
         error(loc, "ambiguous best function under implicit type conversion", call.getName().c_str(), "");
 
     return bestMatch;
+}
+
+//
+// Adjust function calls that aren't declared in Vulkan to a
+// calls with equivalent effects
+//
+TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, TFunction* function, TIntermNode* arguments)
+{
+    TIntermTyped* result = nullptr;
+
+    if (function->getBuiltInOp() != EOpNull) {
+        return nullptr;
+    }
+
+    if (function->getName() == "atomicCounterIncrement") {
+        // change atomicCounterIncrement into an atomicAdd of 1
+        TString name("atomicAdd");
+        TType uintType(EbtUint);
+
+        TFunction realFunc(&name, function->getType());
+
+        for (unsigned int i = 0; i < function->getParamCount(); ++i) {
+            realFunc.addParameter((*function)[i]);
+        }
+
+        realFunc.addParameter(TParameter{ 0, &uintType });
+        arguments = intermediate.growAggregate(arguments, intermediate.addConstantUnion(1, loc, true));
+
+        result = handleFunctionCall(loc, &realFunc, arguments);
+    }
+    else if (function->getName() == "atomicCounterDecrement") {
+        // change atomicCounterDecrement into an atomicAdd with -1
+        // and subtract 1 from result, to return post-decrement value
+        TString name("atomicAdd");
+        TType uintType(EbtUint);
+
+        TFunction realFunc(&name, function->getType());
+
+        for (unsigned int i = 0; i < function->getParamCount(); ++i) {
+            realFunc.addParameter((*function)[i]);
+        }
+
+        realFunc.addParameter(TParameter{ 0, &uintType });
+        arguments = intermediate.growAggregate(arguments, intermediate.addConstantUnion(-1, loc, true));
+
+        result = handleFunctionCall(loc, &realFunc, arguments);
+
+        // post decrement, so that it matches AtomicCounterDecrement semantics
+        if (result) {
+            result = handleBinaryMath(loc, "-", EOpSub, result, intermediate.addConstantUnion(1, loc, true));
+        }
+    }
+    else if (function->getName() == "atomicCounter") {
+        // change atomicCounter into a direct read of the variable
+        if (arguments->getAsTyped()) {
+            result = arguments->getAsTyped();
+        }
+    }
+
+    return result;
 }
 
 // When a declaration includes a type, but not a variable name, it can be used

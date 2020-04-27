@@ -368,6 +368,8 @@ public:
     void checkPrecisionQualifier(const TSourceLoc&, TPrecisionQualifier);
     void memorySemanticsCheck(const TSourceLoc&, const TFunction&, const TIntermOperator& callNode);
 
+    TIntermTyped* vkRelaxedRemapFunctionCall(const TSourceLoc&, TFunction*, TIntermNode*);
+
     void assignError(const TSourceLoc&, const char* op, TString left, TString right);
     void unaryOpError(const TSourceLoc&, const char* op, TString operand);
     void binaryOpError(const TSourceLoc&, const char* op, TString left, TString right);
