@@ -4888,14 +4888,26 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
         return;
     }
     if (id == TQualifier::getLayoutPackingString(ElpPacked)) {
-        if (spvVersion.spv != 0)
-            spvRemoved(loc, "packed");
+        if (spvVersion.spv != 0) {
+            if (spvVersion.vulkanRelaxed) {
+                return; // silently ignore qualifier
+            }
+            else {
+                spvRemoved(loc, "packed");
+            }
+        }
         publicType.qualifier.layoutPacking = ElpPacked;
         return;
     }
     if (id == TQualifier::getLayoutPackingString(ElpShared)) {
-        if (spvVersion.spv != 0)
-            spvRemoved(loc, "shared");
+        if (spvVersion.spv != 0) {
+            if (spvVersion.vulkanRelaxed) {
+                return; // silently ignore qualifier
+            }
+            else {
+                spvRemoved(loc, "shared");
+            }
+        }
         publicType.qualifier.layoutPacking = ElpShared;
         return;
     }
