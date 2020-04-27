@@ -5785,7 +5785,7 @@ void TParseContext::layoutTypeCheck(const TSourceLoc& loc, const TType& type)
 #endif
         }
         if (type.isAtomic()) {
-            if (qualifier.layoutBinding >= (unsigned int)resources.maxAtomicCounterBindings) { // xxTODO: make sure maxAtomicCounterBindings is set properly when using VulkanRelaxed or disable this check?
+            if (qualifier.layoutBinding >= (unsigned int)resources.maxAtomicCounterBindings) {
                 error(loc, "atomic_uint binding is too large; see gl_MaxAtomicCounterBindings", "binding", "");
                 return;
             }
@@ -6515,6 +6515,94 @@ void TParseContext::declareTypeDefaults(const TSourceLoc& loc, const TPublicType
 #endif
 }
 
+TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc, TString& identifier, const TPublicType& publicType,
+    TArraySizes* arraySizes, TIntermTyped* initializer, TType& type, bool& success)
+{
+    if (parsingBuiltins || symbolTable.atBuiltInLevel() || !symbolTable.atGlobalLevel() ||
+        type.getQualifier().storage != EvqUniform ||
+        !(type.containsNonOpaque() || type.getBasicType() == EbtAtomicUint)) {
+        success = false;
+        return nullptr;
+    }
+
+    // use buffer block instead of uniform block for atomic ints,
+    // so they can be written
+    bool useBuffer = (type.getBasicType() == EbtAtomicUint);
+
+    if (type.getQualifier().hasLocation()) {
+        warn(loc, "ignoring layout qualifier for uniform", identifier.c_str(), "location");
+        type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
+    }
+
+    if (initializer) {
+        warn(loc, "Ignoring initializer for uniform", identifier.c_str(), "");
+        initializer = nullptr;
+    }
+
+    if (type.isArray()) {
+        // do array size checks here
+        arraySizesCheck(loc, type.getQualifier(), type.getArraySizes(), initializer, false);
+
+        if (arrayQualifierError(loc, type.getQualifier()) || arrayError(loc, type)) {
+            error(loc, "array param error", identifier.c_str(), "");
+        }
+    }
+
+    // do some checking on the type as it was declared
+    layoutTypeCheck(loc, type);
+
+    int bufferBinding = TQualifier::layoutBindingEnd;
+
+    if (type.getBasicType() == EbtAtomicUint) {
+        type.setBasicType(EbtUint);
+        type.getQualifier().storage = EvqBuffer;
+
+        type.getQualifier().volatil = true;
+        type.getQualifier().coherent = true;
+
+        // xxTODO: use binding and offset layout parameters
+        //         to make buffer layout match appropriately
+        //bufferBinding = type.getQualifier().layoutBinding;
+        bufferBinding = TQualifier::layoutBindingEnd; 
+        type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
+    }
+
+    TVariable* updatedBlock = nullptr;
+
+    if (!useBuffer) {
+        growGlobalUniformBlock(loc, type, identifier, nullptr);
+        updatedBlock = globalUniformBlock;
+    }
+    else {
+        growGlobalBufferBlock(bufferBinding, loc, type, identifier, nullptr);
+        updatedBlock = globalBuffers[bufferBinding];
+    }
+
+    //
+    //      don't assign explicit member offsets here
+    //      if any are assigned, need to be updated here and in the merge/link step
+    // fixBlockUniformOffsets(updatedBlock->getWritableType().getQualifier(), *updatedBlock->getWritableType().getWritableStruct());
+
+    // checks on update buffer object
+    layoutObjectCheck(loc, *updatedBlock);
+
+    TSymbol* symbol = symbolTable.find(identifier);
+
+    if (!symbol) {
+        error(loc, "error adding uniform to global uniform block", identifier.c_str(), "");
+        return nullptr;
+    }
+
+    // merge qualifiers
+    mergeObjectLayoutQualifiers(updatedBlock->getWritableType().getQualifier(), type.getQualifier(), true);
+
+    // do checks on created symbol
+    layoutObjectCheck(loc, *symbol);
+
+    success = true;
+    return nullptr;
+}
+
 //
 // Do everything necessary to handle a variable (non-block) declaration.
 // Either redeclaring a variable, or making a new one, updating the symbol
@@ -6604,85 +6692,13 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
     if (symbol == nullptr)
         reservedErrorCheck(loc, identifier);
 
-    if (symbol == nullptr && spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) { // xxTODO: move other checks and etc. into functions
-        if (!parsingBuiltins && !symbolTable.atBuiltInLevel() && symbolTable.atGlobalLevel() &&
-            type.getQualifier().storage == EvqUniform &&
-            (type.containsNonOpaque() || type.getBasicType() == EbtAtomicUint)) {
+    if (symbol == nullptr && spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
+        bool success = false;
+        TIntermNode* result;
+        result = vkRelaxedRemapUniformVariable(loc, identifier, publicType, arraySizes, initializer, type, success);
 
-            // use buffer block instead of uniform block for atomic ints,
-            // so they can be written
-            bool useBuffer = (type.getBasicType() == EbtAtomicUint);
-
-            if (type.getQualifier().hasLocation()) {
-                warn(loc, "ignoring layout qualifier for uniform", identifier.c_str(), "location");
-                type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
-            }
-
-            if (initializer) {
-                warn(loc, "Ignoring initializer for uniform", identifier.c_str(), "");
-                initializer = nullptr;
-            }
-
-            if (type.isArray()) {
-                // do array size checks here
-                arraySizesCheck(loc, type.getQualifier(), type.getArraySizes(), initializer, false);
-
-                if (arrayQualifierError(loc, type.getQualifier()) || arrayError(loc, type)) {
-                    error(loc, "array param error", identifier.c_str(), "");
-                }
-            }
-
-            // do some checking on the type as it was declared
-            layoutTypeCheck(loc, type);
-
-            int bufferBinding = TQualifier::layoutBindingEnd;
-
-            if (type.getBasicType() == EbtAtomicUint) {
-                type.setBasicType(EbtUint);
-                type.getQualifier().storage = EvqBuffer;
-
-                type.getQualifier().volatil = true;
-                type.getQualifier().coherent = true;
-
-                // xxTODO: use binding and offset layout parameters
-                //         to make buffer layout match appropriately
-                //bufferBinding = type.getQualifier().layoutBinding;
-                bufferBinding = TQualifier::layoutBindingEnd; 
-                type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
-            }
-
-            TVariable* updatedBlock = nullptr;
-
-            if (!useBuffer) {
-                growGlobalUniformBlock(loc, type, identifier, nullptr);
-                updatedBlock = globalUniformBlock;
-            }
-            else {
-                growGlobalBufferBlock(bufferBinding, loc, type, identifier, nullptr);
-                updatedBlock = globalBuffers[bufferBinding];
-            }
-
-            //      don't assign explicit member offsets here
-            //      if any are assigned, need to be updated here and in the merge/link step
-            // fixBlockUniformOffsets(updatedBlock->getWritableType().getQualifier(), *updatedBlock->getWritableType().getWritableStruct());
-
-            // checks on update buffer object
-            layoutObjectCheck(loc, *updatedBlock);
-
-            symbol = symbolTable.find(identifier);
-
-            if (!symbol) {
-                error(loc, "error adding uniform to global uniform block", identifier.c_str(), "");
-                return nullptr;
-            }
-
-            // xxTODO: merge qualifiers?
-            mergeObjectLayoutQualifiers(updatedBlock->getWritableType().getQualifier(), type.getQualifier(), true);
-
-            // do checks on created symbol
-            layoutObjectCheck(loc, *symbol);
-
-            return nullptr;
+        if (success) {
+            return result;
         }
     }
 

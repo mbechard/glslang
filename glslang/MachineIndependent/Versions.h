@@ -91,7 +91,7 @@ struct SpvVersion {
     int vulkanGlsl;   // the version of GLSL semantics for Vulkan, from GL_KHR_vulkan_glsl, for "#define VULKAN XXX"
     int vulkan;       // the version of Vulkan, for which SPIR-V execution environment rules to use
     int openGl;       // the version of GLSL semantics for OpenGL, from GL_ARB_gl_spirv, for "#define GL_SPIRV XXX"
-    bool vulkanRelaxed; // relax Vulkan GLSL semantics to allow some GL-specific syntax for #define VULKAN_RELAXED // xxTODO: write description better
+    bool vulkanRelaxed; // relax changes to GLSL for Vulkan, allowing some GL-specific to be compiled to Vulkan SPIR-V target
 };
 
 //
