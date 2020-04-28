@@ -700,9 +700,6 @@ void TParseContextBase::finish()
             intermediate.addSymbolLinkageNode(linkage, **i);
         }
     }
-    
-    intermediate.addSymbolLinkageNode(linkage, *globalUniformBlock);
-
     intermediate.addSymbolLinkageNodes(linkage, getLanguage(), symbolTable);
 }
 
