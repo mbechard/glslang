@@ -1831,6 +1831,13 @@ void TShader::setUniformLocationBase(int base)
 void TShader::setNoStorageFormat(bool useUnknownFormat) { intermediate->setNoStorageFormat(useUnknownFormat); }
 void TShader::setResourceSetBinding(const std::vector<std::string>& base)   { intermediate->setResourceSetBinding(base); }
 void TShader::setTextureSamplerTransformMode(EShTextureSamplerTransformMode mode) { intermediate->setTextureSamplerTransformMode(mode); }
+void TShader::addBlockStorageOverride(const char* nameStr, TBlockStorageClass backing) { intermediate->addBlockStorageOverride(nameStr, backing); }
+
+void TShader::setGlobalUniformBlockName(const char* name) { intermediate->setGlobalUniformBlockName(name); }
+const char* TShader::getGlobalUniformBlockName() const { return intermediate->getGlobalUniformBlockName(); }
+
+void TShader::setGlobalBufferBlockName(const char* name) { intermediate->setGlobalBufferBlockName(name); }
+const char* TShader::getGlobalBufferBlockName() const { return intermediate->getGlobalBufferBlockName(); }
 #endif
 
 #ifdef ENABLE_HLSL

@@ -413,6 +413,15 @@ enum TResourceType {
     EResCount
 };
 
+enum TBlockStorageClass
+{
+    EbsUniform = 0,
+    EbsStorageBuffer,
+    EbsPushConstant,
+    EbsNone,    // not a uniform or buffer variable
+    EbsCount,
+};
+
 // Make one TShader per shader that you will link into a program. Then
 //  - provide the shader through setStrings() or setStringsWithLengths()
 //  - optionally call setEnv*(), see below for more detail
@@ -466,6 +475,12 @@ public:
     void setNoStorageFormat(bool useUnknownFormat);
     void setNanMinMaxClamp(bool nanMinMaxClamp);
     void setTextureSamplerTransformMode(EShTextureSamplerTransformMode mode);
+    void addBlockStorageOverride(const char* nameStr, glslang::TBlockStorageClass backing);
+
+    void setGlobalUniformBlockName(const char* name);
+    const char* getGlobalUniformBlockName() const;
+    void setGlobalBufferBlockName(const char* name);
+    const char* getGlobalBufferBlockName() const;
 
     // For setting up the environment (cleared to nothingness in the constructor).
     // These must be called so that parsing is done for the right source language and

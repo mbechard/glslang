@@ -309,25 +309,14 @@ public:
     bool parseShaderStrings(TPpContext&, TInputScanner& input, bool versionWillBeError = false) override;
     void parserError(const char* s);     // for bison's yyerror
 
-    virtual const char* getGlobalUniformBlockName() const override { return "gl_DefaultUniformBlock"; }
-    virtual void setUniformBlockDefaults(TType& block) const override
-    {
-        block.getQualifier().layoutPacking = ElpStd140;
-        block.getQualifier().layoutMatrix = ElmRowMajor;
-    }
+    virtual void growGlobalUniformBlock(const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr) override;
+    virtual void growGlobalBufferBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr) override;
 
     void reservedErrorCheck(const TSourceLoc&, const TString&);
     void reservedPpErrorCheck(const TSourceLoc&, const char* name, const char* op) override;
     bool lineContinuationCheck(const TSourceLoc&, bool endOfComment) override;
     bool lineDirectiveShouldSetNextLine() const override;
     bool builtInName(const TString&);
-
-    virtual const char* getGlobalBufferBlockName() const override { return "gl_DefaultBufferBlock"; }
-    virtual void setBufferBlockDefaults(TType& block) const override
-    {
-        block.getQualifier().layoutPacking = ElpStd430;
-        block.getQualifier().layoutMatrix = ElmRowMajor;
-    }
 
     void handlePragma(const TSourceLoc&, const TVector<TString>&) override;
     TIntermTyped* handleVariable(const TSourceLoc&, TSymbol* symbol, const TString* string);
@@ -448,6 +437,7 @@ public:
     TIntermTyped* constructBuiltIn(const TType&, TOperator, TIntermTyped*, const TSourceLoc&, bool subset);
     void inheritMemoryQualifiers(const TQualifier& from, TQualifier& to);
     void declareBlock(const TSourceLoc&, TTypeList& typeList, const TString* instanceName = 0, TArraySizes* arraySizes = 0);
+    void blockStorageRemap(const TSourceLoc&, const TString*, TQualifier&);
     void blockStageIoCheck(const TSourceLoc&, const TQualifier&);
     void blockQualifierCheck(const TSourceLoc&, const TQualifier&, bool instanceName);
     void fixBlockLocations(const TSourceLoc&, TQualifier&, TTypeList&, bool memberWithLocation, bool memberWithoutLocation);
@@ -488,6 +478,14 @@ protected:
 #ifndef GLSLANG_WEB
     void finish() override;
 #endif
+
+    virtual const char* getGlobalUniformBlockName() const override;
+    virtual void finalizeGlobalUniformBlockLayout(TVariable&) override;
+    virtual void setUniformBlockDefaults(TType& block) const override;
+
+    virtual const char* getGlobalBufferBlockName() const override;
+    virtual void finalizeGlobalBufferBlockLayout(TVariable&) override;
+    virtual void setBufferBlockDefaults(TType& block) const override;
 
 public:
     //

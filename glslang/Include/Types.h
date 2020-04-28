@@ -747,6 +747,38 @@ public:
         }
     }
 
+    TBlockStorageClass getBlockStorage() const {
+        if (storage == EvqUniform && !isPushConstant()) {
+            return EbsUniform;
+        }
+        else if (storage == EvqUniform) {
+            return EbsPushConstant;
+        }
+        else if (storage == EvqBuffer) {
+            return EbsStorageBuffer;
+        }
+        return EbsNone;
+    }
+
+    void setBlockStorage(TBlockStorageClass newBacking) {
+        switch (newBacking) {
+        case EbsUniform :
+            layoutPushConstant = false;
+            storage = EvqUniform;
+            break;
+        case EbsStorageBuffer : 
+            layoutPushConstant = false;
+            storage = EvqBuffer;
+            break;
+        case EbsPushConstant :
+            layoutPushConstant = true;
+            storage = EvqUniform;
+            break;
+        default:
+            break;
+        }
+    }
+
 #ifdef GLSLANG_WEB
     bool isPerView() const { return false; }
     bool isTaskMemory() const { return false; }

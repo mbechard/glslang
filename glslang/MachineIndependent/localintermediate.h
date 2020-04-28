@@ -483,6 +483,12 @@ public:
         return globalBufferBlocks;
     }
 
+    void setGlobalUniformBlockName(const char* name) { globalUniformBlockName = std::string(name); }
+    const char* getGlobalUniformBlockName() const { return globalUniformBlockName.c_str(); }
+
+    void setGlobalBufferBlockName(const char* name) { globalBufferBlockName = std::string(name); }
+    const char* getGlobalBufferBlockName() const { return globalBufferBlockName.c_str(); }
+
     void setUseStorageBuffer()
     {
         useStorageBuffer = true;
@@ -785,6 +791,20 @@ public:
     bool getBinaryDoubleOutput() { return binaryDoubleOutput; }
 #endif // GLSLANG_WEB
 
+    // xxTODO: inside the ifdef ?
+    void addBlockStorageOverride(const char* nameStr, TBlockStorageClass backing) {
+        std::string name(nameStr);
+        blockBackingOverrides[name] = backing;
+    }
+    TBlockStorageClass getBlockStorageOverride(const char* nameStr) const
+    {
+        std::string name = nameStr;
+        auto pos = blockBackingOverrides.find(name);
+        if (pos == blockBackingOverrides.end())
+            return EbsNone;
+        else
+            return pos->second;
+    }
 #ifdef ENABLE_HLSL
     void setHlslFunctionality1() { hlslFunctionality1 = true; }
     bool getHlslFunctionality1() const { return hlslFunctionality1; }
@@ -982,6 +1002,8 @@ protected:
     int numTaskNVBlocks;
     TIntermSymbol* globalUniformBlock;
     std::map<int, TIntermSymbol*> globalBufferBlocks;
+    std::string globalUniformBlockName;
+    std::string globalBufferBlockName;
 
     // Base shift values
     std::array<unsigned int, EResCount> shiftBinding;
@@ -1009,6 +1031,8 @@ protected:
     std::unordered_map<std::string, int> uniformLocationOverrides;
     int uniformLocationBase;
 #endif
+    // xxTODO: inside the indeff???????
+    std::unordered_map<std::string, TBlockStorageClass> blockBackingOverrides;
 
     std::unordered_set<int> usedConstantId; // specialization constant ids used
     std::vector<TOffsetRange> usedAtomics;  // sets of bindings used by atomic counters

@@ -221,6 +221,100 @@ void TParseContext::parserError(const char* s)
         error(getCurrentLoc(), "compilation terminated", "", "");
 }
 
+void TParseContext::growGlobalUniformBlock(const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
+{
+    bool createBlock = globalUniformBlock == nullptr;
+    
+    // use base class function to create/expand block
+    TParseContextBase::growGlobalUniformBlock(loc, memberType, memberName, typeList);
+
+    if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
+        // check for a Block storage override
+        TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getGlobalUniformBlockName());
+
+        if (storageOverride != EbsNone) {
+            if (createBlock) {
+                // Remap block storage
+                TQualifier& qualifier = globalUniformBlock->getWritableType().getQualifier();
+                qualifier.setBlockStorage(storageOverride);
+
+                // check that the change didn't create errors
+                blockQualifierCheck(loc, qualifier, false);
+            }
+
+            // remap meber storage as well
+            memberType.getQualifier().setBlockStorage(storageOverride);
+        }
+    }
+}
+
+void TParseContext::growGlobalBufferBlock(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
+{
+    bool createBlock = globalBuffers.find(binding) == globalBuffers.end();
+
+    // use base class function to create/expand block
+    TParseContextBase::growGlobalBufferBlock(binding, loc, memberType, memberName, typeList);
+    
+    if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
+        // check for a Block storage override
+        TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getGlobalBufferBlockName());
+
+        if (storageOverride != EbsNone) {
+            if (createBlock) {
+                // Remap block storage
+                TQualifier& qualifier = globalBuffers[binding]->getWritableType().getQualifier();
+                qualifier.setBlockStorage(storageOverride);
+
+                // check that the change didn't create errors
+                blockQualifierCheck(loc, qualifier, false);
+            }
+
+            // remap meber storage as well
+            memberType.getQualifier().setBlockStorage(storageOverride);
+        }
+    }
+}
+
+const char* TParseContext::getGlobalUniformBlockName() const
+{
+    const char* name = intermediate.getGlobalUniformBlockName();
+    if (std::string(name) == "") {
+        return "gl_DefaultUniformBlock";
+    }
+    else {
+        name;
+    }
+}
+void TParseContext::finalizeGlobalUniformBlockLayout(TVariable&)
+{
+}
+void TParseContext::setUniformBlockDefaults(TType& block) const
+{
+    block.getQualifier().layoutPacking = ElpStd140;
+    block.getQualifier().layoutMatrix = ElmRowMajor;
+}
+
+
+const char* TParseContext::getGlobalBufferBlockName() const
+{
+    const char* name = intermediate.getGlobalBufferBlockName();
+    if (std::string(name) == "") {
+        return "gl_DefaultBufferBlock";
+    }
+    else {
+        name;
+    }
+}
+void TParseContext::finalizeGlobalBufferBlockLayout(TVariable&)
+{
+    // final checks...
+}
+void TParseContext::setBufferBlockDefaults(TType& block) const
+{
+    block.getQualifier().layoutPacking = ElpStd430;
+    block.getQualifier().layoutMatrix = ElmRowMajor;
+}
+
 void TParseContext::handlePragma(const TSourceLoc& loc, const TVector<TString>& tokens)
 {
 #ifndef GLSLANG_WEB
@@ -7546,6 +7640,11 @@ void TParseContext::inheritMemoryQualifiers(const TQualifier& from, TQualifier& 
 void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, const TString* instanceName,
     TArraySizes* arraySizes)
 {
+    // declared storage of members must match declared  storage of block, which might be changed
+    TStorageQualifier blockStorageQualifier = currentBlockQualifier.storage;
+
+    if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed)
+        blockStorageRemap(loc, blockName, currentBlockQualifier);
     blockStageIoCheck(loc, currentBlockQualifier);
     blockQualifierCheck(loc, currentBlockQualifier, instanceName != nullptr);
     if (arraySizes != nullptr) {
@@ -7561,7 +7660,7 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
         TQualifier& memberQualifier = memberType.getQualifier();
         const TSourceLoc& memberLoc = typeList[member].loc;
         globalQualifierFixCheck(memberLoc, memberQualifier);
-        if (memberQualifier.storage != EvqTemporary && memberQualifier.storage != EvqGlobal && memberQualifier.storage != currentBlockQualifier.storage)
+        if (memberQualifier.storage != EvqTemporary && memberQualifier.storage != EvqGlobal && memberQualifier.storage != blockStorageQualifier)
             error(memberLoc, "member storage qualifier cannot contradict block storage qualifier", memberType.getFieldName().c_str(), "");
         memberQualifier.storage = currentBlockQualifier.storage;
 #ifndef GLSLANG_WEB
@@ -7830,6 +7929,17 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
 
     // Save it in the AST for linker use.
     trackLinkage(variable);
+}
+
+//
+// allow storage type of block to be remapped at compile time
+//
+void TParseContext::blockStorageRemap(const TSourceLoc& loc, const TString* instanceName, TQualifier& qualifier)
+{
+    TBlockStorageClass type = intermediate.getBlockStorageOverride(instanceName->c_str());
+    if (type != EbsNone) {
+        qualifier.setBlockStorage(type);
+    }
 }
 
 // Do all block-declaration checking regarding the combination of in/out/uniform/buffer
