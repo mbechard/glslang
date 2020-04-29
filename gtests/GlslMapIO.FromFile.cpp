@@ -42,6 +42,7 @@
 #include "glslang/MachineIndependent/iomapper.h"
 #include "glslang/MachineIndependent/reflection.h"
 
+#ifndef GLSLANG_WEB
 namespace glslangtest {
 namespace {
 
@@ -302,3 +303,4 @@ INSTANTIATE_TEST_CASE_P(
 
 }  // anonymous namespace
 }  // namespace glslangtest
+#endif 

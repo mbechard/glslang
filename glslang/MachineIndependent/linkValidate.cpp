@@ -1924,6 +1924,7 @@ int TIntermediate::computeBufferReferenceTypeSize(const TType& type)
     return size;
 }
 
+#ifndef GLSLANG_WEB
 bool TIntermediate::isIoResizeArray(const TType& type, EShLanguage language) {
     return type.isArray() &&
             ((language == EShLangGeometry    && type.getQualifier().storage == EvqVaryingIn) ||
@@ -1934,5 +1935,6 @@ bool TIntermediate::isIoResizeArray(const TType& type, EShLanguage language) {
             (language == EShLangMeshNV && type.getQualifier().storage == EvqVaryingOut &&
                 !type.getQualifier().perTaskNV));
 }
+#endif // not GLSLANG_WEB
 
 } // end namespace glslang
