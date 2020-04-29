@@ -7227,15 +7227,15 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
 #ifndef GLSLANG_WEB
+        if (spvVersion.vulkan == 0) {
+            SpecialQualifier("gl_VertexID",   EvqVertexId,   EbvVertexId,   symbolTable);
+            SpecialQualifier("gl_InstanceID", EvqInstanceId, EbvInstanceId, symbolTable);
+        }
+
         if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
             // treat these built-ins as aliases of VertexIndex and InstanceIndex
             BuiltInVariable("gl_VertexID", EbvVertexIndex, symbolTable);
             BuiltInVariable("gl_InstanceID", EbvInstanceIndex, symbolTable);
-        }
-
-        if (spvVersion.vulkan == 0) {
-            SpecialQualifier("gl_VertexID",   EvqVertexId,   EbvVertexId,   symbolTable);
-            SpecialQualifier("gl_InstanceID", EvqInstanceId, EbvInstanceId, symbolTable);
         }
 
         if (profile != EEsProfile) {

@@ -246,7 +246,14 @@ public:
         invertY(false),
         useStorageBuffer(false),
         nanMinMaxClamp(false),
-        depthReplacing(false)
+        depthReplacing(false),
+        globalUniformBlock(nullptr),
+        globalUniformBlockName(""),
+        globalBufferBlockName(""),
+        globalUniformBlockSet(TQualifier::layoutSetEnd),
+        globalUniformBlockBinding(TQualifier::layoutBindingEnd),
+        globalBufferBlockSet(TQualifier::layoutSetEnd),
+        globalBufferBlockBinding(TQualifier::layoutBindingEnd)
 #ifndef GLSLANG_WEB
         ,
         implicitThisName("@this"), implicitCounterName("@count"),
@@ -265,13 +272,6 @@ public:
         computeDerivativeMode(LayoutDerivativeNone),
         primitives(TQualifier::layoutNotSet),
         numTaskNVBlocks(0),
-        globalUniformBlock(nullptr),
-        globalUniformBlockName(""),
-        globalBufferBlockName(""),
-        globalUniformBlockSet(TQualifier::layoutSetEnd),
-        globalUniformBlockBinding(TQualifier::layoutBindingEnd),
-        globalBufferBlockSet(TQualifier::layoutSetEnd),
-        globalBufferBlockBinding(TQualifier::layoutBindingEnd),
         autoMapBindings(false),
         autoMapLocations(false),
         flattenUniformArrays(false),
@@ -1015,14 +1015,6 @@ protected:
     ComputeDerivativeMode computeDerivativeMode;
     int primitives;
     int numTaskNVBlocks;
-    TIntermSymbol* globalUniformBlock;
-    std::map<int, TIntermSymbol*> globalBufferBlocks;
-    std::string globalUniformBlockName;
-    std::string globalBufferBlockName;
-    unsigned int globalUniformBlockSet;
-    unsigned int globalUniformBlockBinding;
-    unsigned int globalBufferBlockSet;
-    unsigned int globalBufferBlockBinding;
 
     // Base shift values
     std::array<unsigned int, EResCount> shiftBinding;
@@ -1051,6 +1043,16 @@ protected:
     int uniformLocationBase;
 #endif
     std::unordered_map<std::string, TBlockStorageClass> blockBackingOverrides;
+
+    TIntermSymbol* globalUniformBlock;
+    std::map<int, TIntermSymbol*> globalBufferBlocks;
+    std::string globalUniformBlockName;
+    std::string globalBufferBlockName;
+    unsigned int globalUniformBlockSet;
+    unsigned int globalUniformBlockBinding;
+    unsigned int globalBufferBlockSet;
+    unsigned int globalBufferBlockBinding;
+
 
     std::unordered_set<int> usedConstantId; // specialization constant ids used
     std::vector<TOffsetRange> usedAtomics;  // sets of bindings used by atomic counters

@@ -761,19 +761,21 @@ public:
     }
 
     void setBlockStorage(TBlockStorageClass newBacking) {
+#ifndef GLSLANG_WEB
+        layoutPushConstant = (newBacking == EbsPushConstant);
+#endif
         switch (newBacking) {
         case EbsUniform :
-            layoutPushConstant = false;
             storage = EvqUniform;
             break;
         case EbsStorageBuffer : 
-            layoutPushConstant = false;
             storage = EvqBuffer;
             break;
+#ifndef GLSLANG_WEB
         case EbsPushConstant :
-            layoutPushConstant = true;
             storage = EvqUniform;
             break;
+#endif
         default:
             break;
         }

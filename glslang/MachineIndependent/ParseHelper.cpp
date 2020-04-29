@@ -6636,7 +6636,11 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
 {
     if (parsingBuiltins || symbolTable.atBuiltInLevel() || !symbolTable.atGlobalLevel() ||
         type.getQualifier().storage != EvqUniform ||
-        !(type.containsNonOpaque() || type.getBasicType() == EbtAtomicUint)) {
+        !(type.containsNonOpaque()
+#ifndef GLSLANG_WEB
+            || type.getBasicType() == EbtAtomicUint
+#endif
+        )) {
         success = false;
         return nullptr;
     }
@@ -6668,7 +6672,7 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
     layoutTypeCheck(loc, type);
 
     int bufferBinding = TQualifier::layoutBindingEnd;
-
+#ifndef GLSLANG_WEB
     if (type.getBasicType() == EbtAtomicUint) {
         type.setBasicType(EbtUint);
         type.getQualifier().storage = EvqBuffer;
@@ -6682,6 +6686,7 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
         bufferBinding = TQualifier::layoutBindingEnd; 
         type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
     }
+#endif
 
     TVariable* updatedBlock = nullptr;
 

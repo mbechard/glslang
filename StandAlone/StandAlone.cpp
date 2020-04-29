@@ -1170,6 +1170,9 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
                                                uniOverride.second);
         }
 
+        shader->setUniformLocationBase(uniformBase);
+#endif
+
         for (auto& storageOverride : blockStorageOverrides) {
             shader->addBlockStorageOverride(storageOverride.first.c_str(),
                                             storageOverride.second);
@@ -1186,9 +1189,6 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
             shader->setGlobalUniformSet(globalUniformSet);
             shader->setGlobalUniformBinding(globalUniformBinding);
         }
-
-        shader->setUniformLocationBase(uniformBase);
-#endif
 
         shader->setNanMinMaxClamp(NaNClamp);
 
