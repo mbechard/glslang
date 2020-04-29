@@ -4096,7 +4096,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
     }
 #ifndef GLSLANG_WEB
     if ((profile != EEsProfile && version >= 420) || esBarrier) {
-        if (spvVersion.vulkan == 0) {
+        if (spvVersion.vulkan == 0 || spvVersion.vulkanRelaxed) {
             commonBuiltins.append("void memoryBarrierAtomicCounter();");
         }
         commonBuiltins.append("void memoryBarrierImage();");
@@ -8614,6 +8614,14 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
     symbolTable.relateToOperator("controlBarrier",             EOpBarrier);
     symbolTable.relateToOperator("memoryBarrierAtomicCounter", EOpMemoryBarrierAtomicCounter);
     symbolTable.relateToOperator("memoryBarrierImage",         EOpMemoryBarrierImage);
+
+    if (spvVersion.vulkanRelaxed) {
+        //
+        // functions signature have been replaced to take uint operations on buffer variables
+        // remap atomic counter functions to atomic operations
+        //
+        symbolTable.relateToOperator("memoryBarrierAtomicCounter", EOpMemoryBarrierBuffer);
+    }
 
     symbolTable.relateToOperator("atomicLoad",     EOpAtomicLoad);
     symbolTable.relateToOperator("atomicStore",    EOpAtomicStore);
