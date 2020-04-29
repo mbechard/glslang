@@ -1173,21 +1173,23 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
         shader->setUniformLocationBase(uniformBase);
 #endif
 
-        for (auto& storageOverride : blockStorageOverrides) {
-            shader->addBlockStorageOverride(storageOverride.first.c_str(),
-                                            storageOverride.second);
-        }
+        if (VulkanRulesRelaxed) {
+            for (auto& storageOverride : blockStorageOverrides) {
+                shader->addBlockStorageOverride(storageOverride.first.c_str(),
+                    storageOverride.second);
+            }
 
-        if (setGlobalBufferBlock) {
-            shader->setGlobalBufferBlockName(globalBufferName.c_str());
-            shader->setGlobalBufferSet(globalBufferSet);
-            shader->setGlobalBufferBinding(globalBufferBinding);
-        }
+            if (setGlobalBufferBlock) {
+                shader->setGlobalBufferBlockName(globalBufferName.c_str());
+                shader->setGlobalBufferSet(globalBufferSet);
+                shader->setGlobalBufferBinding(globalBufferBinding);
+            }
 
-        if (setGlobalUniformBlock) {
-            shader->setGlobalUniformBlockName(globalUniformName.c_str());
-            shader->setGlobalUniformSet(globalUniformSet);
-            shader->setGlobalUniformBinding(globalUniformBinding);
+            if (setGlobalUniformBlock) {
+                shader->setGlobalUniformBlockName(globalUniformName.c_str());
+                shader->setGlobalUniformSet(globalUniformSet);
+                shader->setGlobalUniformBinding(globalUniformBinding);
+            }
         }
 
         shader->setNanMinMaxClamp(NaNClamp);
