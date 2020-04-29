@@ -91,6 +91,7 @@ public:
             globalUniformBlock(nullptr),
             globalUniformBinding(TQualifier::layoutBindingEnd),
             globalUniformSet(TQualifier::layoutSetEnd),
+            globalBufferBinding(TQualifier::layoutBindingEnd),
             globalBufferSet(TQualifier::layoutSetEnd)
     {
         if (entryPoint != nullptr)
@@ -233,6 +234,7 @@ protected:
 
     // Manage the global uniform block (used for default atomic_uints with Vulkan-Relaxed)
     TMap<int, TVariable*> globalBuffers;
+    unsigned int globalBufferBinding;
     unsigned int globalBufferSet;
     TMap<int, int> bufferFirstNewMember;
     // override this to set the language-specific name

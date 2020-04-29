@@ -266,6 +266,12 @@ public:
         primitives(TQualifier::layoutNotSet),
         numTaskNVBlocks(0),
         globalUniformBlock(nullptr),
+        globalUniformBlockName(""),
+        globalBufferBlockName(""),
+        globalUniformBlockSet(TQualifier::layoutSetEnd),
+        globalUniformBlockBinding(TQualifier::layoutBindingEnd),
+        globalBufferBlockSet(TQualifier::layoutSetEnd),
+        globalBufferBlockBinding(TQualifier::layoutBindingEnd),
         autoMapBindings(false),
         autoMapLocations(false),
         flattenUniformArrays(false),
@@ -485,9 +491,18 @@ public:
 
     void setGlobalUniformBlockName(const char* name) { globalUniformBlockName = std::string(name); }
     const char* getGlobalUniformBlockName() const { return globalUniformBlockName.c_str(); }
+    void setGlobalUniformSet(unsigned int set) { globalUniformBlockSet = set; }
+    unsigned int getGlobalUniformSet() const { return globalUniformBlockSet; }
+    void setGlobalUniformBinding(unsigned int binding) { globalUniformBlockBinding = binding; }
+    unsigned int getGlobalUniformBinding() const { return globalUniformBlockBinding; }
 
     void setGlobalBufferBlockName(const char* name) { globalBufferBlockName = std::string(name); }
     const char* getGlobalBufferBlockName() const { return globalBufferBlockName.c_str(); }
+    void setGlobalBufferSet(unsigned int set) { globalBufferBlockSet = set; }
+    unsigned int getGlobalBufferSet() const { return globalBufferBlockSet; }
+    void setGlobalBufferBinding(unsigned int binding) { globalBufferBlockBinding = binding; }
+    unsigned int getGlobalBufferBinding() const { return globalBufferBlockBinding; }
+
 
     void setUseStorageBuffer()
     {
@@ -791,8 +806,8 @@ public:
     bool getBinaryDoubleOutput() { return binaryDoubleOutput; }
 #endif // GLSLANG_WEB
 
-    // xxTODO: inside the ifdef ?
-    void addBlockStorageOverride(const char* nameStr, TBlockStorageClass backing) {
+    void addBlockStorageOverride(const char* nameStr, TBlockStorageClass backing)
+    {
         std::string name(nameStr);
         blockBackingOverrides[name] = backing;
     }
@@ -1004,6 +1019,10 @@ protected:
     std::map<int, TIntermSymbol*> globalBufferBlocks;
     std::string globalUniformBlockName;
     std::string globalBufferBlockName;
+    unsigned int globalUniformBlockSet;
+    unsigned int globalUniformBlockBinding;
+    unsigned int globalBufferBlockSet;
+    unsigned int globalBufferBlockBinding;
 
     // Base shift values
     std::array<unsigned int, EResCount> shiftBinding;
@@ -1031,7 +1050,6 @@ protected:
     std::unordered_map<std::string, int> uniformLocationOverrides;
     int uniformLocationBase;
 #endif
-    // xxTODO: inside the indeff???????
     std::unordered_map<std::string, TBlockStorageClass> blockBackingOverrides;
 
     std::unordered_set<int> usedConstantId; // specialization constant ids used

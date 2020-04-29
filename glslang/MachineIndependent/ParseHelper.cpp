@@ -224,7 +224,12 @@ void TParseContext::parserError(const char* s)
 void TParseContext::growGlobalUniformBlock(const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
 {
     bool createBlock = globalUniformBlock == nullptr;
-    
+
+    if (createBlock) {
+        globalUniformBinding = intermediate.getGlobalUniformBinding();
+        globalUniformSet = intermediate.getGlobalUniformSet();
+    }
+
     // use base class function to create/expand block
     TParseContextBase::growGlobalUniformBlock(loc, memberType, memberName, typeList);
 
@@ -251,6 +256,11 @@ void TParseContext::growGlobalUniformBlock(const TSourceLoc& loc, TType& memberT
 void TParseContext::growGlobalBufferBlock(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
 {
     bool createBlock = globalBuffers.find(binding) == globalBuffers.end();
+
+    if (createBlock) {
+        globalBufferBinding = intermediate.getGlobalBufferBinding();
+        globalBufferSet = intermediate.getGlobalBufferSet();
+    }
 
     // use base class function to create/expand block
     TParseContextBase::growGlobalBufferBlock(binding, loc, memberType, memberName, typeList);
@@ -282,7 +292,7 @@ const char* TParseContext::getGlobalUniformBlockName() const
         return "gl_DefaultUniformBlock";
     }
     else {
-        name;
+        return name;
     }
 }
 void TParseContext::finalizeGlobalUniformBlockLayout(TVariable&)
@@ -302,7 +312,7 @@ const char* TParseContext::getGlobalBufferBlockName() const
         return "gl_DefaultBufferBlock";
     }
     else {
-        name;
+        return name;
     }
 }
 void TParseContext::finalizeGlobalBufferBlockLayout(TVariable&)

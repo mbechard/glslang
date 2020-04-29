@@ -1834,10 +1834,13 @@ void TShader::setTextureSamplerTransformMode(EShTextureSamplerTransformMode mode
 void TShader::addBlockStorageOverride(const char* nameStr, TBlockStorageClass backing) { intermediate->addBlockStorageOverride(nameStr, backing); }
 
 void TShader::setGlobalUniformBlockName(const char* name) { intermediate->setGlobalUniformBlockName(name); }
-const char* TShader::getGlobalUniformBlockName() const { return intermediate->getGlobalUniformBlockName(); }
+void TShader::setGlobalUniformSet(unsigned int set) { intermediate->setGlobalUniformSet(set); }
+void TShader::setGlobalUniformBinding(unsigned int binding) { intermediate->setGlobalUniformBinding(binding);  }
 
 void TShader::setGlobalBufferBlockName(const char* name) { intermediate->setGlobalBufferBlockName(name); }
-const char* TShader::getGlobalBufferBlockName() const { return intermediate->getGlobalBufferBlockName(); }
+void TShader::setGlobalBufferSet(unsigned int set) { intermediate->setGlobalBufferSet(set); }
+void TShader::setGlobalBufferBinding(unsigned int binding) { intermediate->setGlobalBufferBinding(binding); }
+
 #endif
 
 #ifdef ENABLE_HLSL

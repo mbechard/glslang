@@ -655,7 +655,7 @@ void TParseContextBase::growGlobalBufferBlock(int binding, const TSourceLoc& loc
     }
 
     // Update with binding and set
-    globalBuffer->getWritableType().getQualifier().layoutBinding = binding;
+    globalBuffer->getWritableType().getQualifier().layoutBinding = binding != TQualifier::layoutBindingEnd ? binding : globalBufferBinding;
     globalBuffer->getWritableType().getQualifier().layoutSet = globalBufferSet;
 
     // Add the requested member as a member to the global block.

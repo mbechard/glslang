@@ -192,6 +192,18 @@ std::array<std::array<unsigned int, EShLangCount>, glslang::EResCount> baseBindi
 std::array<std::array<TPerSetBaseBinding, EShLangCount>, glslang::EResCount> baseBindingForSet;
 std::array<std::vector<std::string>, EShLangCount> baseResourceSetBinding;
 
+std::vector<std::pair<std::string, glslang::TBlockStorageClass>> blockStorageOverrides;
+
+bool setGlobalUniformBlock = false;
+std::string globalUniformName;
+unsigned int globalUniformBinding;
+unsigned int globalUniformSet;
+
+bool setGlobalBufferBlock = false;
+std::string globalBufferName;
+unsigned int globalBufferBinding;
+unsigned int globalBufferSet;
+
 // Add things like "#define ..." to a preamble to use in the beginning of the shader.
 class TPreamble {
 public:
@@ -394,6 +406,110 @@ void ProcessResourceSetBindingBase(int& argc, char**& argv, std::array<std::vect
 }
 
 //
+// Process an optional binding base of one the forms:
+//   --argname name {uniform|buffer|pushconstant}
+void ProcessBlockStorage(int& argc, char**& argv, std::vector<std::pair<std::string, glslang::TBlockStorageClass>>& storage)
+{
+    if (argc < 3)
+        usage();
+
+    glslang::TBlockStorageClass blockStorage = glslang::EbsNone;
+    
+    std::string strBacking(argv[2]);
+    if (strBacking == "uniform") {
+        blockStorage = glslang::EbsUniform;
+    }
+    else if (strBacking == "buffer") {
+        blockStorage = glslang::EbsStorageBuffer;
+    }
+    else if (strBacking == "pushconstant") {
+        blockStorage = glslang::EbsPushConstant;
+    }
+    else {
+        printf("%s: invalid block storage\n", strBacking.c_str());
+        usage();
+    }
+
+    storage.push_back(std::make_pair(std::string(argv[1]), blockStorage));
+
+    argc -= 2;
+    argv += 2;
+}
+
+inline bool isNonDigit(char c) {
+    // a non-digit character valid in a glsl identifier
+    return (c == '_') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+// whether string isa  valid identifier to be used in glsl
+bool isValidIdentifier(const char* str) {
+    std::string idn(str);
+
+    if (idn.length() == 0) {
+        return false;
+    }
+
+    if (idn.length() >= 3 && idn.substr(0, 3) == "gl_") {
+        // identifiers startin with "gl_" are reserved
+        return false;
+    }
+
+    if (!isNonDigit(idn[0])) {
+        return false;
+    }
+
+    for (int i = 1; i < idn.length(); ++i) {
+        if (!(isdigit(idn[i]) || isNonDigit(idn[i]))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Process setings for either the global buffer block or global unfirom block
+// of the form:
+//      --argname name set binding
+void ProcessGlobalBlockSettings(int& argc, char**& argv, std::string& name, unsigned int& set, unsigned int& binding)
+{
+    if (argc < 4)
+        usage();
+
+    unsigned int curArg = 1;
+
+    if (!isValidIdentifier(argv[curArg])) {
+        printf("%s: invalid identifier\n", argv[curArg]);
+        usage();
+    }
+    name = argv[curArg];
+
+    curArg++;
+
+    errno = 0;
+    int setVal = ::strtol(argv[curArg], NULL, 10);
+    if (errno || setVal < 0) {
+        printf("%s: invalid set\n", argv[curArg]);
+        usage();
+    }
+    set = setVal;
+
+    curArg++;
+
+    errno = 0;
+    int bindingVal = ::strtol(argv[curArg], NULL, 10);
+    if (errno || bindingVal < 0) {
+        printf("%s: invalid binding\n", argv[curArg]);
+        usage();
+    }
+    binding = bindingVal;
+
+    curArg++;
+
+    argc -= (curArg - 1);
+    argv += (curArg - 1);
+}
+
+//
 // Do all command-line argument parsing.  This includes building up the work-items
 // to be processed later, and saving all the command-line options.
 //
@@ -560,6 +676,17 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                                lowerword == "resource-set-binding"  ||
                                lowerword == "rsb") {
                         ProcessResourceSetBindingBase(argc, argv, baseResourceSetBinding);
+                    } else if (lowerword == "set-block-storage" ||
+                               lowerword == "sbs") {
+                        ProcessBlockStorage(argc, argv, blockStorageOverrides);
+                    } else if (lowerword == "set-default-buffer-block" ||
+                               lowerword == "sbb") {
+                        ProcessGlobalBlockSettings(argc, argv, globalBufferName, globalBufferSet, globalBufferBinding);
+                        setGlobalBufferBlock = true;
+                    } else if (lowerword == "set-default-uniform-block" ||
+                               lowerword == "sub") {
+                        ProcessGlobalBlockSettings(argc, argv, globalUniformName, globalUniformSet, globalUniformBinding);
+                        setGlobalUniformBlock = true;
                     } else if (lowerword == "shift-image-bindings" ||  // synonyms
                                lowerword == "shift-image-binding"  ||
                                lowerword == "sib") {
@@ -709,9 +836,7 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                     Error("unknown -O option");
                 break;
             case 'R':
-                VulkanRulesRelaxed = true;    // xxTODO: this option implies that -V and --auto-map-bindings are enabled as well
-                                              // xxTODO: add ability to specify global uniform buffer set/binding and atomic buffer set
-                                              // xxTODO: maybe merge into -f option ??
+                VulkanRulesRelaxed = true;
                 break;
             case 'S':
                 if (argc <= 1)
@@ -1043,6 +1168,23 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
         for (auto& uniOverride : uniformLocationOverrides) {
             shader->addUniformLocationOverride(uniOverride.first.c_str(),
                                                uniOverride.second);
+        }
+
+        for (auto& storageOverride : blockStorageOverrides) {
+            shader->addBlockStorageOverride(storageOverride.first.c_str(),
+                                            storageOverride.second);
+        }
+
+        if (setGlobalBufferBlock) {
+            shader->setGlobalBufferBlockName(globalBufferName.c_str());
+            shader->setGlobalBufferSet(globalBufferSet);
+            shader->setGlobalBufferBinding(globalBufferBinding);
+        }
+
+        if (setGlobalUniformBlock) {
+            shader->setGlobalUniformBlockName(globalUniformName.c_str());
+            shader->setGlobalUniformSet(globalUniformSet);
+            shader->setGlobalUniformBinding(globalUniformBinding);
         }
 
         shader->setUniformLocationBase(uniformBase);
@@ -1550,6 +1692,9 @@ void usage()
            "              is searched first, followed by left-to-right order of -I\n"
            "  -Od         disables optimization; may cause illegal SPIR-V for HLSL\n"
            "  -Os         optimizes SPIR-V to minimize size\n"
+           "  -R          use relaxed verification rules for generating Vulkan SPIR-V,\n"
+           "              allowing the use of default uniforms, atomic_uints, and\n"
+           "              gl_VertexID and gl_InstanceID keywords.\n"
            "  -S <stage>  uses specified stage rather than parsing the file extension\n"
            "              choices for <stage> are vert, tesc, tese, geom, frag, or comp\n"
            "  -U<name> | --undef-macro <name> | --U <name>\n"
@@ -1623,6 +1768,19 @@ void usage()
            "  --resource-set-binding [stage] set\n"
            "                                    set descriptor set for all resources\n"
            "  --rsb                             synonym for --resource-set-binding\n"
+           "  --set-block-storage name {uniform|buffer|pushconstant}\n"
+           "                                    set the storage class of a uniform, buffer,\n"
+           "                                    or push constant variable block declared in\n"
+           "                                    in the program, when using -R option\n"
+           "  --sbs                             synonym for set-block-storage\n"
+           "  --set-default-buffer-block name set binding\n"
+           "                                    set name, descriptor set, and binding for\n"
+           "                                    global default-buffere-block, with -R opt\n"
+           "  --sbb                             synonym for set-default-buffer-block\n"
+           "  --set-default-buffer-block name set binding\n"
+           "                                    set name, descriptor set, and binding for\n"
+           "                                    global default-uniform-block, with -R opt\n"
+           "  --sbb                             synonym for set-default-uniform-block\n"
            "  --shift-image-binding [stage] num\n"
            "                                    base binding number for images (uav)\n"
            "  --shift-image-binding [stage] [num set]...\n"
