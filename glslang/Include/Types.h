@@ -498,6 +498,7 @@ public:
 #ifndef GLSLANG_WEB
         noContraction = false;
 #endif
+        defaultBlock = false;
     }
 
     // drop qualifiers that don't belong in a temporary variable
@@ -510,6 +511,7 @@ public:
         clearMemory();
         specConstant = false;
         nonUniform = false;
+        defaultBlock = false;
         clearLayout();
     }
 
@@ -568,6 +570,7 @@ public:
     bool specConstant : 1;
     bool nonUniform   : 1;
     bool explicitOffset   : 1;
+    bool defaultBlock : 1; // default blocks with matching names have structures merged when linking
 
 #ifdef GLSLANG_WEB
     bool isWriteOnly() const { return false; }
@@ -774,6 +777,8 @@ public:
 #ifndef GLSLANG_WEB
         case EbsPushConstant :
             storage = EvqUniform;
+            layoutSet = TQualifier::layoutSetEnd;
+            layoutBinding = TQualifier::layoutBindingEnd;
             break;
 #endif
         default:

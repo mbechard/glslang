@@ -236,11 +236,12 @@ void TParseContext::growGlobalUniformBlock(const TSourceLoc& loc, TType& memberT
     if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
         // check for a Block storage override
         TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getGlobalUniformBlockName());
+        TQualifier& qualifier = globalUniformBlock->getWritableType().getQualifier();
+        qualifier.defaultBlock = true;
 
         if (storageOverride != EbsNone) {
             if (createBlock) {
                 // Remap block storage
-                TQualifier& qualifier = globalUniformBlock->getWritableType().getQualifier();
                 qualifier.setBlockStorage(storageOverride);
 
                 // check that the change didn't create errors
@@ -264,7 +265,9 @@ void TParseContext::growGlobalBufferBlock(int binding, const TSourceLoc& loc, TT
 
     // use base class function to create/expand block
     TParseContextBase::growGlobalBufferBlock(binding, loc, memberType, memberName, typeList);
-    
+    TQualifier& qualifier = globalBuffers[binding]->getWritableType().getQualifier();
+    qualifier.defaultBlock = true;
+
     if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
         // check for a Block storage override
         TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getGlobalBufferBlockName());
@@ -272,7 +275,7 @@ void TParseContext::growGlobalBufferBlock(int binding, const TSourceLoc& loc, TT
         if (storageOverride != EbsNone) {
             if (createBlock) {
                 // Remap block storage
-                TQualifier& qualifier = globalBuffers[binding]->getWritableType().getQualifier();
+
                 qualifier.setBlockStorage(storageOverride);
 
                 // check that the change didn't create errors
@@ -317,8 +320,8 @@ const char* TParseContext::getGlobalBufferBlockName() const
 }
 void TParseContext::finalizeGlobalBufferBlockLayout(TVariable&)
 {
-    // final checks...
 }
+
 void TParseContext::setBufferBlockDefaults(TType& block) const
 {
     block.getQualifier().layoutPacking = ElpStd430;

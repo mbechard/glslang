@@ -689,17 +689,8 @@ void TParseContextBase::finish()
 
     // Transfer the linkage symbols to AST nodes, preserving order.
     TIntermAggregate* linkage = new TIntermAggregate;
-    for (auto i = linkageSymbols.begin(); i != linkageSymbols.end(); ++i) {
-        if (*i == globalUniformBlock) {
-            intermediate.setGlobalUniformBlock(linkage, **i);
-        }
-        else if (isGlobalBufferBlock(**i)) {
-            intermediate.addGlobalBufferBlock(linkage, **i);
-        }
-        else {
-            intermediate.addSymbolLinkageNode(linkage, **i);
-        }
-    }
+    for (auto i = linkageSymbols.begin(); i != linkageSymbols.end(); ++i)
+        intermediate.addSymbolLinkageNode(linkage, **i);
     intermediate.addSymbolLinkageNodes(linkage, getLanguage(), symbolTable);
 }
 

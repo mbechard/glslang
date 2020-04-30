@@ -247,7 +247,6 @@ public:
         useStorageBuffer(false),
         nanMinMaxClamp(false),
         depthReplacing(false),
-        globalUniformBlock(nullptr),
         globalUniformBlockName(""),
         globalBufferBlockName(""),
         globalUniformBlockSet(TQualifier::layoutSetEnd),
@@ -478,16 +477,6 @@ public:
     // Linkage related
     void addSymbolLinkageNodes(TIntermAggregate*& linkage, EShLanguage, TSymbolTable&);
     void addSymbolLinkageNode(TIntermAggregate*& linkage, const TSymbol&);
-
-    void setGlobalUniformBlock(TIntermAggregate*& linkage, const TSymbol& newBlock);
-    void addGlobalBufferBlock(TIntermAggregate*& linkage, const TSymbol& newBlock);
-
-    TIntermSymbol* findGlobalUniformBlock() {
-        return globalUniformBlock;
-    }
-    std::map<int, TIntermSymbol*> &getGlobalBufferBlocks() {
-        return globalBufferBlocks;
-    }
 
     void setGlobalUniformBlockName(const char* name) { globalUniformBlockName = std::string(name); }
     const char* getGlobalUniformBlockName() const { return globalUniformBlockName.c_str(); }
@@ -1044,8 +1033,6 @@ protected:
 #endif
     std::unordered_map<std::string, TBlockStorageClass> blockBackingOverrides;
 
-    TIntermSymbol* globalUniformBlock;
-    std::map<int, TIntermSymbol*> globalBufferBlocks;
     std::string globalUniformBlockName;
     std::string globalBufferBlockName;
     unsigned int globalUniformBlockSet;

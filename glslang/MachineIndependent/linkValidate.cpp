@@ -520,38 +520,48 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
     TIntermSequence& linkerObjects = findLinkerObjects()->getSequence();
     TIntermSequence& unitLinkerObjects = unit.findLinkerObjects()->getSequence();
 
-    // merge global uniform block
-    TIntermSymbol* block = findGlobalUniformBlock();
-    TIntermSymbol* unitBlock = unit.findGlobalUniformBlock();
+    // build lists of default blocks from the intermediates
+    TIntermSequence defaultBlocks;
+    TIntermSequence unitDefaultBlocks;
 
-    if  (unitBlock && block) {
-        mergeBlockDefinitions(infoSink, block, unitBlock);
-    }
-    else if (unitBlock && !block){
-        // merge unitBlock directly
-        linkerObjects.push_back(unitBlock);
-        globalUniformBlock = unitBlock;
-    }
-
-    // merge global buffer blocks
-    std::map<int, TIntermSymbol*>& bufferBlocks = getGlobalBufferBlocks();
-    const std::map<int, TIntermSymbol*>& unitBufferBlocks = unit.getGlobalBufferBlocks();
-
-    auto itUnitBlock = unitBufferBlocks.begin();
-    for (; itUnitBlock != unitBufferBlocks.end(); itUnitBlock++) {
-        int binding = (*itUnitBlock).second->getAsSymbolNode()->getQualifier().layoutBinding;
-        auto itBlock = bufferBlocks.find(binding);
-
-        if (itBlock == bufferBlocks.end()) {
-            linkerObjects.push_back((*itUnitBlock).second);
-            bufferBlocks[binding] = (*itUnitBlock).second;
-            continue;
+    auto filter = [](TIntermSequence& list, TIntermNode* node) {
+        if (node->getAsSymbolNode()->getQualifier().defaultBlock) {
+            list.push_back(node);
         }
+    };
 
-        TIntermSymbol* bufferBlock = (*itBlock).second->getAsSymbolNode();
-        TIntermSymbol* unitBufferBlock = (*itUnitBlock).second->getAsSymbolNode();
+    std::for_each(linkerObjects.begin(), linkerObjects.end(),
+        [&defaultBlocks, &filter](TIntermNode* node) {
+            filter(defaultBlocks, node);
+        });
+    std::for_each(unitLinkerObjects.begin(), unitLinkerObjects.end(),
+        [&unitDefaultBlocks, &filter](TIntermNode* node) {
+            filter(unitDefaultBlocks, node);
+    });
 
-        mergeBlockDefinitions(infoSink, bufferBlock, unitBufferBlock);
+    auto itUnitBlock = unitDefaultBlocks.begin();
+    for (; itUnitBlock != unitDefaultBlocks.end(); itUnitBlock++) {
+        
+        bool add = true;
+        auto itBlock = defaultBlocks.begin();
+
+        for (; itBlock != defaultBlocks.end(); itBlock++) {
+            TIntermSymbol* block = (*itBlock)->getAsSymbolNode();
+            TIntermSymbol* unitBlock = (*itUnitBlock)->getAsSymbolNode();
+
+            assert(block && unitBlock);
+
+            // if the two default blocks match, then merge their definitions
+            if (block->getType().getTypeName() == unitBlock->getType().getTypeName() &&
+                block->getQualifier().storage == unitBlock->getQualifier().storage) {
+                add = false;
+                mergeBlockDefinitions(infoSink, block, unitBlock);
+            }
+        }
+        if (add) {
+            // push back on original list; won't change the size of the list we're iterating over
+            linkerObjects.push_back(*itUnitBlock);
+        }
     }
 }
 
