@@ -90,7 +90,9 @@ public:
             limits(resources.limits),
             globalUniformBlock(nullptr),
             globalUniformBinding(TQualifier::layoutBindingEnd),
-            globalUniformSet(TQualifier::layoutSetEnd)
+            globalUniformSet(TQualifier::layoutSetEnd),
+            globalBufferBinding(TQualifier::layoutBindingEnd),
+            globalBufferSet(TQualifier::layoutSetEnd)
     {
         if (entryPoint != nullptr)
             sourceEntryPointName = *entryPoint;
@@ -154,6 +156,9 @@ public:
 
     // Manage the global uniform block (default uniforms in GLSL, $Global in HLSL)
     virtual void growGlobalUniformBlock(const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
+
+    // Manage global buffer (used for backing default uniform atomic uints in GLSL)
+    virtual void growGlobalBufferBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
 
     // Potentially rename shader entry point function
     void renameShaderFunction(TString*& name) const
@@ -225,7 +230,25 @@ protected:
     // override this to set the language-specific name
     virtual const char* getGlobalUniformBlockName() const { return ""; }
     virtual void setUniformBlockDefaults(TType&) const { }
-    virtual void finalizeGlobalUniformBlockLayout(TVariable&) { }
+    virtual void finalizeGlobalUniformBlockLayout(TVariable&) {}
+
+    // Manage the global uniform block (used for default atomic_uints with Vulkan-Relaxed)
+    TMap<int, TVariable*> globalBuffers;
+    unsigned int globalBufferBinding;
+    unsigned int globalBufferSet;
+    TMap<int, int> bufferFirstNewMember;
+    // override this to set the language-specific name
+    virtual const char* getGlobalBufferBlockName() const { return ""; }
+    virtual void setBufferBlockDefaults(TType&) const {}
+    virtual void finalizeGlobalBufferBlockLayout(TVariable&) {}
+    bool isGlobalBufferBlock(const TSymbol& symbol) {
+        const TVariable* var = symbol.getAsVariable();
+        if (!var)
+            return false;
+        auto& at = globalBuffers.find(var->getType().getQualifier().layoutBinding);
+        return (at != globalBuffers.end() && (*at).second->getType() == var->getType());
+    }
+
     virtual void outputMessage(const TSourceLoc&, const char* szReason, const char* szToken,
                                const char* szExtraInfoFormat, TPrefixType prefix,
                                va_list args);
@@ -288,12 +311,8 @@ public:
     bool parseShaderStrings(TPpContext&, TInputScanner& input, bool versionWillBeError = false) override;
     void parserError(const char* s);     // for bison's yyerror
 
-    virtual const char* getGlobalUniformBlockName() const override { return "gl_DefaultUniformBlock"; }
-    virtual void setUniformBlockDefaults(TType& block) const override
-    {
-        block.getQualifier().layoutPacking = ElpStd140;
-        block.getQualifier().layoutMatrix = ElmRowMajor;
-    }
+    virtual void growGlobalUniformBlock(const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr) override;
+    virtual void growGlobalBufferBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr) override;
 
     void reservedErrorCheck(const TSourceLoc&, const TString&);
     void reservedPpErrorCheck(const TSourceLoc&, const char* name, const char* op) override;
@@ -339,6 +358,9 @@ public:
     void handlePrecisionQualifier(const TSourceLoc&, TQualifier&, TPrecisionQualifier);
     void checkPrecisionQualifier(const TSourceLoc&, TPrecisionQualifier);
     void memorySemanticsCheck(const TSourceLoc&, const TFunction&, const TIntermOperator& callNode);
+
+    TIntermTyped* vkRelaxedRemapFunctionCall(const TSourceLoc&, TFunction*, TIntermNode*);
+    TIntermNode* vkRelaxedRemapUniformVariable(const TSourceLoc&, TString&, const TPublicType&, TArraySizes*, TIntermTyped*, TType&, bool&);
 
     void assignError(const TSourceLoc&, const char* op, TString left, TString right);
     void unaryOpError(const TSourceLoc&, const char* op, TString operand);
@@ -417,6 +439,7 @@ public:
     TIntermTyped* constructBuiltIn(const TType&, TOperator, TIntermTyped*, const TSourceLoc&, bool subset);
     void inheritMemoryQualifiers(const TQualifier& from, TQualifier& to);
     void declareBlock(const TSourceLoc&, TTypeList& typeList, const TString* instanceName = 0, TArraySizes* arraySizes = 0);
+    void blockStorageRemap(const TSourceLoc&, const TString*, TQualifier&);
     void blockStageIoCheck(const TSourceLoc&, const TQualifier&);
     void blockQualifierCheck(const TSourceLoc&, const TQualifier&, bool instanceName);
     void fixBlockLocations(const TSourceLoc&, TQualifier&, TTypeList&, bool memberWithLocation, bool memberWithoutLocation);
@@ -457,6 +480,14 @@ protected:
 #ifndef GLSLANG_WEB
     void finish() override;
 #endif
+
+    virtual const char* getGlobalUniformBlockName() const override;
+    virtual void finalizeGlobalUniformBlockLayout(TVariable&) override;
+    virtual void setUniformBlockDefaults(TType& block) const override;
+
+    virtual const char* getGlobalBufferBlockName() const override;
+    virtual void finalizeGlobalBufferBlockLayout(TVariable&) override;
+    virtual void setBufferBlockDefaults(TType& block) const override;
 
 public:
     //

@@ -246,7 +246,13 @@ public:
         invertY(false),
         useStorageBuffer(false),
         nanMinMaxClamp(false),
-        depthReplacing(false)
+        depthReplacing(false),
+        globalUniformBlockName(""),
+        globalBufferBlockName(""),
+        globalUniformBlockSet(TQualifier::layoutSetEnd),
+        globalUniformBlockBinding(TQualifier::layoutBindingEnd),
+        globalBufferBlockSet(TQualifier::layoutSetEnd),
+        globalBufferBlockBinding(TQualifier::layoutBindingEnd)
 #ifndef GLSLANG_WEB
         ,
         implicitThisName("@this"), implicitCounterName("@count"),
@@ -472,6 +478,21 @@ public:
     void addSymbolLinkageNodes(TIntermAggregate*& linkage, EShLanguage, TSymbolTable&);
     void addSymbolLinkageNode(TIntermAggregate*& linkage, const TSymbol&);
 
+    void setGlobalUniformBlockName(const char* name) { globalUniformBlockName = std::string(name); }
+    const char* getGlobalUniformBlockName() const { return globalUniformBlockName.c_str(); }
+    void setGlobalUniformSet(unsigned int set) { globalUniformBlockSet = set; }
+    unsigned int getGlobalUniformSet() const { return globalUniformBlockSet; }
+    void setGlobalUniformBinding(unsigned int binding) { globalUniformBlockBinding = binding; }
+    unsigned int getGlobalUniformBinding() const { return globalUniformBlockBinding; }
+
+    void setGlobalBufferBlockName(const char* name) { globalBufferBlockName = std::string(name); }
+    const char* getGlobalBufferBlockName() const { return globalBufferBlockName.c_str(); }
+    void setGlobalBufferSet(unsigned int set) { globalBufferBlockSet = set; }
+    unsigned int getGlobalBufferSet() const { return globalBufferBlockSet; }
+    void setGlobalBufferBinding(unsigned int binding) { globalBufferBlockBinding = binding; }
+    unsigned int getGlobalBufferBinding() const { return globalBufferBlockBinding; }
+
+
     void setUseStorageBuffer()
     {
         useStorageBuffer = true;
@@ -498,12 +519,6 @@ public:
     }
     int getLocalSizeSpecId(int dim) const { return localSizeSpecId[dim]; }
 
-    void setGlobalUniformBlockName(std::string &name) {
-        globalUniformBlockName = name;
-    }
-    TString getGlobalUniformBlockName() {
-        return globalUniformBlockName.c_str();
-    }
 #ifdef GLSLANG_WEB
     void output(TInfoSink&, bool tree) { }
 
@@ -780,6 +795,20 @@ public:
     bool getBinaryDoubleOutput() { return binaryDoubleOutput; }
 #endif // GLSLANG_WEB
 
+    void addBlockStorageOverride(const char* nameStr, TBlockStorageClass backing)
+    {
+        std::string name(nameStr);
+        blockBackingOverrides[name] = backing;
+    }
+    TBlockStorageClass getBlockStorageOverride(const char* nameStr) const
+    {
+        std::string name = nameStr;
+        auto pos = blockBackingOverrides.find(name);
+        if (pos == blockBackingOverrides.end())
+            return EbsNone;
+        else
+            return pos->second;
+    }
 #ifdef ENABLE_HLSL
     void setHlslFunctionality1() { hlslFunctionality1 = true; }
     bool getHlslFunctionality1() const { return hlslFunctionality1; }
@@ -888,6 +917,7 @@ protected:
     void remapIds(const TIdMaps& idMaps, int idShift, TIntermediate&);
     void mergeBodies(TInfoSink&, TIntermSequence& globals, const TIntermSequence& unitGlobals);
     void mergeLinkerObjects(TInfoSink&, TIntermSequence& linkerObjects, const TIntermSequence& unitLinkerObjects, EShLanguage);
+    void mergeBlockDefinitions(TInfoSink&, TIntermSymbol* block, TIntermSymbol* unitBlock);
     void mergeImplicitArraySizes(TType&, const TType&);
     void mergeErrorCheck(TInfoSink&, const TIntermSymbol&, const TIntermSymbol&, EShLanguage);
     void checkCallGraphCycles(TInfoSink&);
@@ -974,7 +1004,6 @@ protected:
     ComputeDerivativeMode computeDerivativeMode;
     int primitives;
     int numTaskNVBlocks;
-    std::string globalUniformBlockName;
 
     // Base shift values
     std::array<unsigned int, EResCount> shiftBinding;
@@ -1002,6 +1031,15 @@ protected:
     std::unordered_map<std::string, int> uniformLocationOverrides;
     int uniformLocationBase;
 #endif
+    std::unordered_map<std::string, TBlockStorageClass> blockBackingOverrides;
+
+    std::string globalUniformBlockName;
+    std::string globalBufferBlockName;
+    unsigned int globalUniformBlockSet;
+    unsigned int globalUniformBlockBinding;
+    unsigned int globalBufferBlockSet;
+    unsigned int globalBufferBlockBinding;
+
 
     std::unordered_set<int> usedConstantId; // specialization constant ids used
     std::vector<TOffsetRange> usedAtomics;  // sets of bindings used by atomic counters

@@ -1833,6 +1833,16 @@ void TShader::setResourceSetBinding(const std::vector<std::string>& base)   { in
 void TShader::setTextureSamplerTransformMode(EShTextureSamplerTransformMode mode) { intermediate->setTextureSamplerTransformMode(mode); }
 #endif
 
+void TShader::addBlockStorageOverride(const char* nameStr, TBlockStorageClass backing) { intermediate->addBlockStorageOverride(nameStr, backing); }
+
+void TShader::setGlobalUniformBlockName(const char* name) { intermediate->setGlobalUniformBlockName(name); }
+void TShader::setGlobalUniformSet(unsigned int set) { intermediate->setGlobalUniformSet(set); }
+void TShader::setGlobalUniformBinding(unsigned int binding) { intermediate->setGlobalUniformBinding(binding); }
+
+void TShader::setGlobalBufferBlockName(const char* name) { intermediate->setGlobalBufferBlockName(name); }
+void TShader::setGlobalBufferSet(unsigned int set) { intermediate->setGlobalBufferSet(set); }
+void TShader::setGlobalBufferBinding(unsigned int binding) { intermediate->setGlobalBufferBinding(binding); }
+
 #ifdef ENABLE_HLSL
 // See comment above TDefaultHlslIoMapper in iomapper.cpp:
 void TShader::setHlslIoMapping(bool hlslIoMap)          { intermediate->setHlslIoMapping(hlslIoMap); }

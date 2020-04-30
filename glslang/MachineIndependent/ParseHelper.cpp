@@ -221,6 +221,113 @@ void TParseContext::parserError(const char* s)
         error(getCurrentLoc(), "compilation terminated", "", "");
 }
 
+void TParseContext::growGlobalUniformBlock(const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
+{
+    bool createBlock = globalUniformBlock == nullptr;
+
+    if (createBlock) {
+        globalUniformBinding = intermediate.getGlobalUniformBinding();
+        globalUniformSet = intermediate.getGlobalUniformSet();
+    }
+
+    // use base class function to create/expand block
+    TParseContextBase::growGlobalUniformBlock(loc, memberType, memberName, typeList);
+
+    if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
+        // check for a Block storage override
+        TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getGlobalUniformBlockName());
+        TQualifier& qualifier = globalUniformBlock->getWritableType().getQualifier();
+        qualifier.defaultBlock = true;
+
+        if (storageOverride != EbsNone) {
+            if (createBlock) {
+                // Remap block storage
+                qualifier.setBlockStorage(storageOverride);
+
+                // check that the change didn't create errors
+                blockQualifierCheck(loc, qualifier, false);
+            }
+
+            // remap meber storage as well
+            memberType.getQualifier().setBlockStorage(storageOverride);
+        }
+    }
+}
+
+void TParseContext::growGlobalBufferBlock(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
+{
+    bool createBlock = globalBuffers.find(binding) == globalBuffers.end();
+
+    if (createBlock) {
+        globalBufferBinding = intermediate.getGlobalBufferBinding();
+        globalBufferSet = intermediate.getGlobalBufferSet();
+    }
+
+    // use base class function to create/expand block
+    TParseContextBase::growGlobalBufferBlock(binding, loc, memberType, memberName, typeList);
+    TQualifier& qualifier = globalBuffers[binding]->getWritableType().getQualifier();
+    qualifier.defaultBlock = true;
+
+    if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
+        // check for a Block storage override
+        TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getGlobalBufferBlockName());
+
+        if (storageOverride != EbsNone) {
+            if (createBlock) {
+                // Remap block storage
+
+                qualifier.setBlockStorage(storageOverride);
+
+                // check that the change didn't create errors
+                blockQualifierCheck(loc, qualifier, false);
+            }
+
+            // remap meber storage as well
+            memberType.getQualifier().setBlockStorage(storageOverride);
+        }
+    }
+}
+
+const char* TParseContext::getGlobalUniformBlockName() const
+{
+    const char* name = intermediate.getGlobalUniformBlockName();
+    if (std::string(name) == "") {
+        return "gl_DefaultUniformBlock";
+    }
+    else {
+        return name;
+    }
+}
+void TParseContext::finalizeGlobalUniformBlockLayout(TVariable&)
+{
+}
+void TParseContext::setUniformBlockDefaults(TType& block) const
+{
+    block.getQualifier().layoutPacking = ElpStd140;
+    block.getQualifier().layoutMatrix = ElmRowMajor;
+}
+
+
+const char* TParseContext::getGlobalBufferBlockName() const
+{
+    const char* name = intermediate.getGlobalBufferBlockName();
+    if (std::string(name) == "") {
+        return "gl_DefaultBufferBlock";
+    }
+    else {
+        return name;
+    }
+}
+void TParseContext::finalizeGlobalBufferBlockLayout(TVariable&)
+{
+}
+
+void TParseContext::setBufferBlockDefaults(TType& block) const
+{
+    block.getQualifier().layoutPacking = ElpStd430;
+    block.getQualifier().layoutMatrix = ElmRowMajor;
+}
+
 void TParseContext::handlePragma(const TSourceLoc& loc, const TVector<TString>& tokens)
 {
 #ifndef GLSLANG_WEB
@@ -1103,6 +1210,14 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
 {
     TIntermTyped* result = nullptr;
 
+    if (spvVersion.vulkan != 0 && spvVersion.vulkanRelaxed) {
+        // allow calls that are invalid in Vulkan Semantics to be invisibily
+        // remapped to equivalent valid functions
+        result = vkRelaxedRemapFunctionCall(loc, function, arguments);
+        if (result)
+            return result;
+    }
+
     if (function->getBuiltInOp() == EOpArrayLength)
         result = handleLengthMethod(loc, function, arguments);
     else if (function->getBuiltInOp() != EOpNull) {
@@ -1682,6 +1797,7 @@ void TParseContext::memorySemanticsCheck(const TSourceLoc& loc, const TFunction&
     // Grab the semantics and storage class semantics from the operands, based on opcode
     switch (callNode.getOp()) {
     case EOpAtomicAdd:
+    case EOpAtomicSubtract:
     case EOpAtomicMin:
     case EOpAtomicMax:
     case EOpAtomicAnd:
@@ -2098,6 +2214,7 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
     }
 
     case EOpAtomicAdd:
+    case EOpAtomicSubtract:
     case EOpAtomicMin:
     case EOpAtomicMax:
     case EOpAtomicAnd:
@@ -4878,14 +4995,26 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
         return;
     }
     if (id == TQualifier::getLayoutPackingString(ElpPacked)) {
-        if (spvVersion.spv != 0)
-            spvRemoved(loc, "packed");
+        if (spvVersion.spv != 0) {
+            if (spvVersion.vulkanRelaxed) {
+                return; // silently ignore qualifier
+            }
+            else {
+                spvRemoved(loc, "packed");
+            }
+        }
         publicType.qualifier.layoutPacking = ElpPacked;
         return;
     }
     if (id == TQualifier::getLayoutPackingString(ElpShared)) {
-        if (spvVersion.spv != 0)
-            spvRemoved(loc, "shared");
+        if (spvVersion.spv != 0) {
+            if (spvVersion.vulkanRelaxed) {
+                return; // silently ignore qualifier
+            }
+            else {
+                spvRemoved(loc, "shared");
+            }
+        }
         publicType.qualifier.layoutPacking = ElpShared;
         return;
     }
@@ -5775,7 +5904,7 @@ void TParseContext::layoutTypeCheck(const TSourceLoc& loc, const TType& type)
 #endif
         }
         if (type.isAtomic()) {
-            if (qualifier.layoutBinding >= (unsigned int)resources.maxAtomicCounterBindings) { // xxTODO: make sure maxAtomicCounterBindings is set properly when using VulkanRelaxed or disable this check?
+            if (qualifier.layoutBinding >= (unsigned int)resources.maxAtomicCounterBindings) {
                 error(loc, "atomic_uint binding is too large; see gl_MaxAtomicCounterBindings", "binding", "");
                 return;
             }
@@ -6423,6 +6552,66 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
     return bestMatch;
 }
 
+//
+// Adjust function calls that aren't declared in Vulkan to a
+// calls with equivalent effects
+//
+TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, TFunction* function, TIntermNode* arguments)
+{
+    TIntermTyped* result = nullptr;
+
+    if (function->getBuiltInOp() != EOpNull) {
+        return nullptr;
+    }
+
+    if (function->getName() == "atomicCounterIncrement") {
+        // change atomicCounterIncrement into an atomicAdd of 1
+        TString name("atomicAdd");
+        TType uintType(EbtUint);
+
+        TFunction realFunc(&name, function->getType());
+
+        for (unsigned int i = 0; i < function->getParamCount(); ++i) {
+            realFunc.addParameter((*function)[i]);
+        }
+
+        realFunc.addParameter(TParameter{ 0, &uintType });
+        arguments = intermediate.growAggregate(arguments, intermediate.addConstantUnion(1, loc, true));
+
+        result = handleFunctionCall(loc, &realFunc, arguments);
+    }
+    else if (function->getName() == "atomicCounterDecrement") {
+        // change atomicCounterDecrement into an atomicAdd with -1
+        // and subtract 1 from result, to return post-decrement value
+        TString name("atomicAdd");
+        TType uintType(EbtUint);
+
+        TFunction realFunc(&name, function->getType());
+
+        for (unsigned int i = 0; i < function->getParamCount(); ++i) {
+            realFunc.addParameter((*function)[i]);
+        }
+
+        realFunc.addParameter(TParameter{ 0, &uintType });
+        arguments = intermediate.growAggregate(arguments, intermediate.addConstantUnion(-1, loc, true));
+
+        result = handleFunctionCall(loc, &realFunc, arguments);
+
+        // post decrement, so that it matches AtomicCounterDecrement semantics
+        if (result) {
+            result = handleBinaryMath(loc, "-", EOpSub, result, intermediate.addConstantUnion(1, loc, true));
+        }
+    }
+    else if (function->getName() == "atomicCounter") {
+        // change atomicCounter into a direct read of the variable
+        if (arguments->getAsTyped()) {
+            result = arguments->getAsTyped();
+        }
+    }
+
+    return result;
+}
+
 // When a declaration includes a type, but not a variable name, it can be used
 // to establish defaults.
 void TParseContext::declareTypeDefaults(const TSourceLoc& loc, const TPublicType& publicType)
@@ -6443,6 +6632,99 @@ void TParseContext::declareTypeDefaults(const TSourceLoc& loc, const TPublicType
     if (publicType.qualifier.hasLayout() && !publicType.qualifier.hasBufferReference())
         warn(loc, "useless application of layout qualifier", "layout", "");
 #endif
+}
+
+TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc, TString& identifier, const TPublicType& publicType,
+    TArraySizes* arraySizes, TIntermTyped* initializer, TType& type, bool& success)
+{
+    if (parsingBuiltins || symbolTable.atBuiltInLevel() || !symbolTable.atGlobalLevel() ||
+        type.getQualifier().storage != EvqUniform ||
+        !(type.containsNonOpaque()
+#ifndef GLSLANG_WEB
+            || type.getBasicType() == EbtAtomicUint
+#endif
+        )) {
+        success = false;
+        return nullptr;
+    }
+
+    // use buffer block instead of uniform block for atomic ints,
+    // so they can be written
+    bool useBuffer = (type.getBasicType() == EbtAtomicUint);
+
+    if (type.getQualifier().hasLocation()) {
+        warn(loc, "ignoring layout qualifier for uniform", identifier.c_str(), "location");
+        type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
+    }
+
+    if (initializer) {
+        warn(loc, "Ignoring initializer for uniform", identifier.c_str(), "");
+        initializer = nullptr;
+    }
+
+    if (type.isArray()) {
+        // do array size checks here
+        arraySizesCheck(loc, type.getQualifier(), type.getArraySizes(), initializer, false);
+
+        if (arrayQualifierError(loc, type.getQualifier()) || arrayError(loc, type)) {
+            error(loc, "array param error", identifier.c_str(), "");
+        }
+    }
+
+    // do some checking on the type as it was declared
+    layoutTypeCheck(loc, type);
+
+    int bufferBinding = TQualifier::layoutBindingEnd;
+#ifndef GLSLANG_WEB
+    if (type.getBasicType() == EbtAtomicUint) {
+        type.setBasicType(EbtUint);
+        type.getQualifier().storage = EvqBuffer;
+
+        type.getQualifier().volatil = true;
+        type.getQualifier().coherent = true;
+
+        // xxTODO: use binding and offset layout parameters
+        //         to make buffer layout match appropriately
+        //bufferBinding = type.getQualifier().layoutBinding;
+        bufferBinding = TQualifier::layoutBindingEnd; 
+        type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
+    }
+#endif
+
+    TVariable* updatedBlock = nullptr;
+
+    if (!useBuffer) {
+        growGlobalUniformBlock(loc, type, identifier, nullptr);
+        updatedBlock = globalUniformBlock;
+    }
+    else {
+        growGlobalBufferBlock(bufferBinding, loc, type, identifier, nullptr);
+        updatedBlock = globalBuffers[bufferBinding];
+    }
+
+    //
+    //      don't assign explicit member offsets here
+    //      if any are assigned, need to be updated here and in the merge/link step
+    // fixBlockUniformOffsets(updatedBlock->getWritableType().getQualifier(), *updatedBlock->getWritableType().getWritableStruct());
+
+    // checks on update buffer object
+    layoutObjectCheck(loc, *updatedBlock);
+
+    TSymbol* symbol = symbolTable.find(identifier);
+
+    if (!symbol) {
+        error(loc, "error adding uniform to global uniform block", identifier.c_str(), "");
+        return nullptr;
+    }
+
+    // merge qualifiers
+    mergeObjectLayoutQualifiers(updatedBlock->getWritableType().getQualifier(), type.getQualifier(), true);
+
+    // do checks on created symbol
+    layoutObjectCheck(loc, *symbol);
+
+    success = true;
+    return nullptr;
 }
 
 //
@@ -6534,74 +6816,13 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
     if (symbol == nullptr)
         reservedErrorCheck(loc, identifier);
 
-    if (symbol == nullptr && spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) { // xxTODO: move other checks and etc. into functions
-        if (!parsingBuiltins && !symbolTable.atBuiltInLevel() && symbolTable.atGlobalLevel() &&
-            type.getQualifier().storage == EvqUniform && type.containsNonOpaque()) {
-            // xxTODO: set these base on compiler params
-            globalUniformBinding = 0;
-            globalUniformSet = 10;
-            // xxTODO: how will arrays be handled here...
-            // xxTODO: In the case that uniform is a struct:
-            //        Hlsl parser has a copy of the struct's member list that it passes (to replace the shallow copy of the member list)
-            //        they do this because the HLSL struct can have mixed uniform/in/out members, and they need JUST the uniforms
-            //        that's needed here BUT make sure the shallow copy is safe (i.e. the PublicType that the member list comes from won't get deleted out from under us at any point)
-            //        There's no special handling of structs elswhere, so I think we're safe ??
-            //if (type.isStruct()) {
-            //    auto it = ioTypeMap.find(memberType.getStruct());
-            //    if (it != ioTypeMap.end() && it->second.uniform)
-            //        newTypeList = it->second.uniform;
-            //}
+    if (symbol == nullptr && spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
+        bool success = false;
+        TIntermNode* result;
+        result = vkRelaxedRemapUniformVariable(loc, identifier, publicType, arraySizes, initializer, type, success);
 
-            warn(loc, "moving uniform into global uniform block", identifier.c_str(), ""); // xxTODO: finalize text in warning
-
-            if (type.getQualifier().hasLocation()) {
-                // xxTODO: do we want to ignore qualifiers here?
-                warn(loc, "ignoring layout qualifier 'location'", identifier.c_str(), ""); // xxTODO: finalize text in warning
-                type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
-            }
-
-            if (initializer) {
-              // xxTODO: do we want invalid initializers to still have compile errors?
-                initializer = nullptr;
-                warn(loc, "ignoring initializer", identifier.c_str(), "");  // xxTODO: finalize text in warning
-            }
-
-            if (type.isArray()) { // if (type.isArray())
-                arraySizesCheck(loc, type.getQualifier(), type.getArraySizes(), initializer, false);
-
-                if (arrayQualifierError(loc, type.getQualifier()) || arrayError(loc, type)) {
-                    error(loc, "array param error", identifier.c_str(), "");
-                }
-            }
-            
-            // layoutTypeCheck(loc, type); // Included in the Object Check after creation
-            
-            growGlobalUniformBlock(loc, type, identifier, nullptr);
-            symbol = symbolTable.find(identifier);
-
-            if (!symbol) {
-                error(loc, "error adding uniform to global uniform block", identifier.c_str(), ""); 
-            }
-
-            layoutObjectCheck(loc, *symbol); // xxTODO: good idea to do this for the member? do we want to do type-qualifier checks before creation instead?
-
-            // xxTODO: should do a final layoutObjectCheck() for the global buffer ?
-            {
-                auto blockQualifier = globalUniformBlock->getType().getQualifier();
-                auto typeList = *globalUniformBlock->getWritableType().getWritableStruct();
-                bool memberWithLocation = false; // no locations allowed;
-                bool memberWithoutLocation = true;
-
-                // xxTODO: most of these checks won't do anything, since we're uniforms...
-                //        not sure if we need them to catch disallowed qualifiers (e.g. xfb_..) will test
-                //fixBlockLocations(loc, blockQualifier, typeList, memberWithLocation, memberWithoutLocation); // won't matter, no locations
-                //fixXfbOffsets(currentBlockQualifier, typeList);   // won't matter, no xfb
-                fixBlockUniformOffsets(currentBlockQualifier, typeList); // xxTODO: the glslangToSpv module appears to generate offsets on its own, so we don't need to explicitly set it for the members; still probably a good thing to do?
-                
-                layoutObjectCheck(loc, *globalUniformBlock);
-            }
-
-            return nullptr;
+        if (success) {
+            return result;
         }
     }
 
@@ -6638,7 +6859,6 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             error(loc, "initializer requires a variable, not a member", identifier.c_str(), "");
             return nullptr;
         }
-        // xxTODO: how will uniform initializers handle VulkanRelaxed moving the uniform into a struct ??
         initNode = executeInitializer(loc, initializer, variable);
     }
 
@@ -7438,6 +7658,11 @@ void TParseContext::inheritMemoryQualifiers(const TQualifier& from, TQualifier& 
 void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, const TString* instanceName,
     TArraySizes* arraySizes)
 {
+    // declared storage of members must match declared  storage of block, which might be changed
+    TStorageQualifier blockStorageQualifier = currentBlockQualifier.storage;
+
+    if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed)
+        blockStorageRemap(loc, blockName, currentBlockQualifier);
     blockStageIoCheck(loc, currentBlockQualifier);
     blockQualifierCheck(loc, currentBlockQualifier, instanceName != nullptr);
     if (arraySizes != nullptr) {
@@ -7453,7 +7678,7 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
         TQualifier& memberQualifier = memberType.getQualifier();
         const TSourceLoc& memberLoc = typeList[member].loc;
         globalQualifierFixCheck(memberLoc, memberQualifier);
-        if (memberQualifier.storage != EvqTemporary && memberQualifier.storage != EvqGlobal && memberQualifier.storage != currentBlockQualifier.storage)
+        if (memberQualifier.storage != EvqTemporary && memberQualifier.storage != EvqGlobal && memberQualifier.storage != blockStorageQualifier)
             error(memberLoc, "member storage qualifier cannot contradict block storage qualifier", memberType.getFieldName().c_str(), "");
         memberQualifier.storage = currentBlockQualifier.storage;
 #ifndef GLSLANG_WEB
@@ -7722,6 +7947,17 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
 
     // Save it in the AST for linker use.
     trackLinkage(variable);
+}
+
+//
+// allow storage type of block to be remapped at compile time
+//
+void TParseContext::blockStorageRemap(const TSourceLoc& loc, const TString* instanceName, TQualifier& qualifier)
+{
+    TBlockStorageClass type = intermediate.getBlockStorageOverride(instanceName->c_str());
+    if (type != EbsNone) {
+        qualifier.setBlockStorage(type);
+    }
 }
 
 // Do all block-declaration checking regarding the combination of in/out/uniform/buffer
