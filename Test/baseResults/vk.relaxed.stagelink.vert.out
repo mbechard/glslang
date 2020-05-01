@@ -649,7 +649,7 @@ gl_FragCoord origin is upper left
               15:             TypePointer Uniform 14(gl_DefaultBufferBlock)
               16:     15(ptr) Variable Uniform
               17:             TypeInt 32 1
-              18:     17(int) Constant 0
+              18:     17(int) Constant 2
               19:             TypePointer Uniform 11(int)
               21:     11(int) Constant 1
               22:     11(int) Constant 0
@@ -662,10 +662,10 @@ gl_FragCoord origin is upper left
 35(gl_DefaultUniformBlock):             TypeStruct 7(fvec4) 32(fvec2) 32(fvec2) 7(fvec4) 7(fvec4) 34 7(fvec4)
               36:             TypePointer Uniform 35(gl_DefaultUniformBlock)
               37:     36(ptr) Variable Uniform
-              38:             TypePointer Uniform 7(fvec4)
-              41:             TypePointer Uniform 6(float)
-              46:     17(int) Constant 2
-              53:     17(int) Constant 3
+              38:     17(int) Constant 0
+              39:             TypePointer Uniform 7(fvec4)
+              42:             TypePointer Uniform 6(float)
+              53:     17(int) Constant 6
               57:     17(int) Constant 4
               67:             TypePointer Output 7(fvec4)
            68(o):     67(ptr) Variable Output
@@ -690,22 +690,22 @@ gl_FragCoord origin is upper left
               28:     11(int) ISub 27 21
               29:     11(int) IAdd 23 28
                               Store 13(j) 29
-              39:     38(ptr) AccessChain 37 18
-              40:    7(fvec4) Load 39
-              42:     41(ptr) AccessChain 37 24 22
-              43:    6(float) Load 42
-              44:     41(ptr) AccessChain 37 24 21
-              45:    6(float) Load 44
-              47:     41(ptr) AccessChain 37 46 22
+              40:     39(ptr) AccessChain 37 38
+              41:    7(fvec4) Load 40
+              43:     42(ptr) AccessChain 37 18 22
+              44:    6(float) Load 43
+              45:     42(ptr) AccessChain 37 18 21
+              46:    6(float) Load 45
+              47:     42(ptr) AccessChain 37 24 22
               48:    6(float) Load 47
-              49:     41(ptr) AccessChain 37 46 21
+              49:     42(ptr) AccessChain 37 24 21
               50:    6(float) Load 49
-              51:    7(fvec4) CompositeConstruct 43 45 48 50
-              52:    7(fvec4) FAdd 40 51
-              54:     38(ptr) AccessChain 37 53
+              51:    7(fvec4) CompositeConstruct 44 46 48 50
+              52:    7(fvec4) FAdd 41 51
+              54:     39(ptr) AccessChain 37 53
               55:    7(fvec4) Load 54
               56:    7(fvec4) FAdd 52 55
-              58:     38(ptr) AccessChain 37 57
+              58:     39(ptr) AccessChain 37 57
               59:    7(fvec4) Load 58
               60:    7(fvec4) FAdd 56 59
                               Store 31(v) 60

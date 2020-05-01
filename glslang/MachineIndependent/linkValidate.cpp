@@ -555,7 +555,7 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
             if (block->getType().getTypeName() == unitBlock->getType().getTypeName() &&
                 block->getQualifier().storage == unitBlock->getQualifier().storage) {
                 add = false;
-                mergeBlockDefinitions(infoSink, block, unitBlock);
+                mergeBlockDefinitions(infoSink, block, unitBlock, &unit);
             }
         }
         if (add) {
@@ -565,7 +565,7 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
     }
 }
 
-void TIntermediate::mergeBlockDefinitions(TInfoSink& infoSink, TIntermSymbol* block, TIntermSymbol* unitBlock) {
+void TIntermediate::mergeBlockDefinitions(TInfoSink& infoSink, TIntermSymbol* block, TIntermSymbol* unitBlock, TIntermediate* unit) {
     if (block->getType() == unitBlock->getType()) {
         return;
     }
@@ -582,6 +582,10 @@ void TIntermediate::mergeBlockDefinitions(TInfoSink& infoSink, TIntermSymbol* bl
     // order of declarations doesn't matter and they matched based on member name
     TTypeList* memberList = block->getType().getWritableStruct();
     TTypeList* unitMemberList = unitBlock->getType().getWritableStruct();
+
+    // keep track of which members have changed position
+    // so we don't have to search the array again
+    std::map<unsigned int, unsigned int> memberIndexUpdates;
 
     unsigned int memberListStartSize = memberList->size();
     for (unsigned int i = 0; i < unitMemberList->size(); ++i) {
@@ -601,14 +605,77 @@ void TIntermediate::mergeBlockDefinitions(TInfoSink& infoSink, TIntermSymbol* bl
                     infoSink.info << "\"" << memberType->getCompleteString() << "\" versus ";
                     infoSink.info << "\"" << unitMemberType->getCompleteString() << "\"\n";
                 }
+
+                memberIndexUpdates[i] = j;
             }
         }
         if (merge) {
             memberList->push_back((*unitMemberList)[i]);
+            memberIndexUpdates[i] = memberList->size() - 1;
         }
     }
 
-    // copy member list back, so relative order is the same
+    TType unitType;
+    unitType.shallowCopy(unitBlock->getType());
+
+    // update symbol node in unit tree,
+    // and other nodes that may reference it
+    class TMergeBlockTraverser : public TIntermTraverser {
+    public:
+        TMergeBlockTraverser(const glslang::TType &type, const glslang::TType& unitType,
+                             glslang::TIntermediate& unit,
+                             const std::map<unsigned int, unsigned int>& memberIdxUpdates) :
+            newType(type), unitType(unitType), unit(unit), memberIndexUpdates(memberIdxUpdates)
+        { }
+        virtual ~TMergeBlockTraverser() { }
+
+        const glslang::TType& newType;          // type with modifications
+        const glslang::TType& unitType;         // copy of original type
+        glslang::TIntermediate& unit;           // intermediate that is being updated
+        const std::map<unsigned int, unsigned int>& memberIndexUpdates;
+
+        virtual void visitSymbol(TIntermSymbol* symbol)
+        {
+            glslang::TType& symType = symbol->getWritableType();
+
+            if (symType == unitType) {
+                // each symbol node has a local copy of the unitType
+                //  if merging involves changing properties that aren't shared objects
+                //  they should be updated in all instances
+
+                // e.g. the struct list is a ptr to an object, so it can be updated
+                // once, outside the traverser
+                //*symType.getWritableStruct() = *newType.getStruct();
+            }
+
+        }
+
+        virtual bool visitBinary(TVisit visit, glslang::TIntermBinary* node)
+        {
+            if (node->getOp() == EOpIndexDirectStruct && node->getLeft()->getType() == unitType) {
+                // this is a dereference to a member of the block since the
+                // member list changed, need to update this to point to the
+                // right index
+                assert(node->getRight()->getAsConstantUnion());
+
+                glslang::TIntermConstantUnion* constNode = node->getRight()->getAsConstantUnion();
+                unsigned int memberIdx = constNode->getConstArray()[0].getUConst();
+                unsigned int newIdx = memberIndexUpdates.at(memberIdx);
+                TIntermTyped* newConstNode = unit.addConstantUnion(newIdx, node->getRight()->getLoc());
+
+                node->setRight(newConstNode);
+                delete constNode;
+
+                return true;
+            }
+            return true;
+        }
+    } finalLinkTraverser(block->getType(), unitType, *unit, memberIndexUpdates);
+
+    // update the tree to use the new type
+    unit->getTreeRoot()->traverse(&finalLinkTraverser);
+
+    // update the member list
     (*unitMemberList) = (*memberList);
 }
 
