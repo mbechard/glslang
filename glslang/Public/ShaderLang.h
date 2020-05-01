@@ -806,6 +806,10 @@ public:
     const char* getInfoLog();
     const char* getInfoDebugLog();
 
+    unsigned int getNumStages() const;
+    EShLanguage getFirstStage() const;
+    EShLanguage getLastStage() const;
+
     TIntermediate* getIntermediate(EShLanguage stage) const { return intermediate[stage]; }
 
 #ifndef GLSLANG_WEB

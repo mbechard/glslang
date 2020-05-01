@@ -2087,6 +2087,36 @@ const char* TProgram::getInfoDebugLog()
     return infoSink->debug.c_str();
 }
 
+unsigned int TProgram::getNumStages() const {
+    unsigned int stages = 0;
+    for (unsigned int i = 0; i < EShLangCount; ++i) {
+        if (intermediate[i] != nullptr) {
+            ++stages;
+        }
+    }
+    return stages;
+}
+
+EShLanguage TProgram::getFirstStage() const {
+    int stage = 0;
+    for (; stage < EShLangCount; ++stage) {
+        if (intermediate[stage] != nullptr) {
+            return EShLanguage(stage);
+        }
+    }
+    return EShLangCount;
+}
+
+EShLanguage TProgram::getLastStage() const {
+    int stage = EShLangCount;
+    for (; stage >= 0; --stage) {
+        if (intermediate[stage] != nullptr) {
+            return EShLanguage(stage);
+        }
+    }
+    return EShLangCount;
+}
+
 #ifndef GLSLANG_WEB
 
 //
