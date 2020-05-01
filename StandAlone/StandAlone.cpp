@@ -680,11 +680,11 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                                lowerword == "sbs") {
                         ProcessBlockStorage(argc, argv, blockStorageOverrides);
                     } else if (lowerword == "set-default-buffer-block" ||
-                               lowerword == "sbb") {
+                               lowerword == "sdbb") {
                         ProcessGlobalBlockSettings(argc, argv, globalBufferName, globalBufferSet, globalBufferBinding);
                         setGlobalBufferBlock = true;
                     } else if (lowerword == "set-default-uniform-block" ||
-                               lowerword == "sub") {
+                               lowerword == "sdub") {
                         ProcessGlobalBlockSettings(argc, argv, globalUniformName, globalUniformSet, globalUniformBinding);
                         setGlobalUniformBlock = true;
                     } else if (lowerword == "shift-image-bindings" ||  // synonyms
@@ -1777,12 +1777,12 @@ void usage()
            "  --sbs                             synonym for set-block-storage\n"
            "  --set-default-buffer-block name set binding\n"
            "                                    set name, descriptor set, and binding for\n"
-           "                                    global default-buffere-block, with -R opt\n"
-           "  --sbb                             synonym for set-default-buffer-block\n"
-           "  --set-default-buffer-block name set binding\n"
+           "                                    global default-buffer-block, with -R opt\n"
+           "  --sdbb                            synonym for set-default-buffer-block\n"
+           "  --set-default-uniform-block name set binding\n"
            "                                    set name, descriptor set, and binding for\n"
            "                                    global default-uniform-block, with -R opt\n"
-           "  --sbb                             synonym for set-default-uniform-block\n"
+           "  --sdub                            synonym for set-default-uniform-block\n"
            "  --shift-image-binding [stage] num\n"
            "                                    base binding number for images (uav)\n"
            "  --shift-image-binding [stage] [num set]...\n"
