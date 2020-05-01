@@ -536,9 +536,9 @@ gl_FragCoord origin is upper left
                               Name 8  "bar("
                               Name 13  "foo("
                               Name 16  "j"
-                              Name 18  "gl_DefaultBufferBlock"
-                              MemberName 18(gl_DefaultBufferBlock) 0  "counter1"
-                              MemberName 18(gl_DefaultBufferBlock) 1  "counter2"
+                              Name 18  "gl_AtomicCounterBlock"
+                              MemberName 18(gl_AtomicCounterBlock) 0  "counter1"
+                              MemberName 18(gl_AtomicCounterBlock) 1  "counter2"
                               Name 20  ""
                               Name 65  "f"
                               Name 66  "UniformBlock"
@@ -565,15 +565,15 @@ gl_FragCoord origin is upper left
                               Name 130  "t1"
                               Name 148  "j"
                               Name 152  "o"
-                              MemberDecorate 18(gl_DefaultBufferBlock) 0 Coherent
-                              MemberDecorate 18(gl_DefaultBufferBlock) 0 Volatile
-                              MemberDecorate 18(gl_DefaultBufferBlock) 0 Coherent
-                              MemberDecorate 18(gl_DefaultBufferBlock) 0 Offset 0
-                              MemberDecorate 18(gl_DefaultBufferBlock) 1 Coherent
-                              MemberDecorate 18(gl_DefaultBufferBlock) 1 Volatile
-                              MemberDecorate 18(gl_DefaultBufferBlock) 1 Coherent
-                              MemberDecorate 18(gl_DefaultBufferBlock) 1 Offset 4
-                              Decorate 18(gl_DefaultBufferBlock) BufferBlock
+                              MemberDecorate 18(gl_AtomicCounterBlock) 0 Coherent
+                              MemberDecorate 18(gl_AtomicCounterBlock) 0 Volatile
+                              MemberDecorate 18(gl_AtomicCounterBlock) 0 Coherent
+                              MemberDecorate 18(gl_AtomicCounterBlock) 0 Offset 0
+                              MemberDecorate 18(gl_AtomicCounterBlock) 1 Coherent
+                              MemberDecorate 18(gl_AtomicCounterBlock) 1 Volatile
+                              MemberDecorate 18(gl_AtomicCounterBlock) 1 Coherent
+                              MemberDecorate 18(gl_AtomicCounterBlock) 1 Offset 4
+                              Decorate 18(gl_AtomicCounterBlock) BufferBlock
                               Decorate 20 DescriptorSet 0
                               Decorate 20 Binding 4
                               MemberDecorate 66(UniformBlock) 0 Offset 0
@@ -610,8 +610,8 @@ gl_FragCoord origin is upper left
               12:             TypeFunction 11(fvec4)
               15:             TypePointer Function 6(int)
               17:      6(int) Constant 0
-18(gl_DefaultBufferBlock):             TypeStruct 6(int) 6(int)
-              19:             TypePointer Uniform 18(gl_DefaultBufferBlock)
+18(gl_AtomicCounterBlock):             TypeStruct 6(int) 6(int)
+              19:             TypePointer Uniform 18(gl_AtomicCounterBlock)
               20:     19(ptr) Variable Uniform
               21:             TypeInt 32 1
               22:     21(int) Constant 0

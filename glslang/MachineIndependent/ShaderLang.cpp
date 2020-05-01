@@ -1842,9 +1842,9 @@ void TShader::setGlobalUniformBlockName(const char* name) { intermediate->setGlo
 void TShader::setGlobalUniformSet(unsigned int set) { intermediate->setGlobalUniformSet(set); }
 void TShader::setGlobalUniformBinding(unsigned int binding) { intermediate->setGlobalUniformBinding(binding); }
 
-void TShader::setGlobalBufferBlockName(const char* name) { intermediate->setGlobalBufferBlockName(name); }
-void TShader::setGlobalBufferSet(unsigned int set) { intermediate->setGlobalBufferSet(set); }
-void TShader::setGlobalBufferBinding(unsigned int binding) { intermediate->setGlobalBufferBinding(binding); }
+void TShader::setAtomicCounterBlockName(const char* name) { intermediate->setAtomicCounterBlockName(name); }
+void TShader::setAtomicCounterBlockSet(unsigned int set) { intermediate->setAtomicCounterBlockSet(set); }
+void TShader::setAtomicCounterBlockBinding(unsigned int binding) { intermediate->setAtomicCounterBlockBinding(binding); }
 
 #ifdef ENABLE_HLSL
 // See comment above TDefaultHlslIoMapper in iomapper.cpp:

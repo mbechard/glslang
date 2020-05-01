@@ -200,9 +200,9 @@ unsigned int globalUniformBinding;
 unsigned int globalUniformSet;
 
 bool setGlobalBufferBlock = false;
-std::string globalBufferName;
-unsigned int globalBufferBinding;
-unsigned int globalBufferSet;
+std::string atomicCounterBlockName;
+unsigned int atomicCounterBlockBinding;
+unsigned int atomicCounterBlockSet;
 
 // Add things like "#define ..." to a preamble to use in the beginning of the shader.
 class TPreamble {
@@ -679,9 +679,9 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                     } else if (lowerword == "set-block-storage" ||
                                lowerword == "sbs") {
                         ProcessBlockStorage(argc, argv, blockStorageOverrides);
-                    } else if (lowerword == "set-default-buffer-block" ||
-                               lowerword == "sdbb") {
-                        ProcessGlobalBlockSettings(argc, argv, globalBufferName, globalBufferSet, globalBufferBinding);
+                    } else if (lowerword == "set-atomic-counter-block" ||
+                               lowerword == "sacb") {
+                        ProcessGlobalBlockSettings(argc, argv, atomicCounterBlockName, atomicCounterBlockSet, atomicCounterBlockBinding);
                         setGlobalBufferBlock = true;
                     } else if (lowerword == "set-default-uniform-block" ||
                                lowerword == "sdub") {
@@ -1180,9 +1180,9 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
             }
 
             if (setGlobalBufferBlock) {
-                shader->setGlobalBufferBlockName(globalBufferName.c_str());
-                shader->setGlobalBufferSet(globalBufferSet);
-                shader->setGlobalBufferBinding(globalBufferBinding);
+                shader->setAtomicCounterBlockName(atomicCounterBlockName.c_str());
+                shader->setAtomicCounterBlockSet(atomicCounterBlockSet);
+                shader->setAtomicCounterBlockBinding(atomicCounterBlockBinding);
             }
 
             if (setGlobalUniformBlock) {
@@ -1775,10 +1775,10 @@ void usage()
            "                                    or push constant variable block declared in\n"
            "                                    in the program, when using -R option\n"
            "  --sbs                             synonym for set-block-storage\n"
-           "  --set-default-buffer-block name set binding\n"
+           "  --set-atomic-counter-block name set binding\n"
            "                                    set name, descriptor set, and binding for\n"
-           "                                    global default-buffer-block, with -R opt\n"
-           "  --sdbb                            synonym for set-default-buffer-block\n"
+           "                                    atomic counter block, with -R opt\n"
+           "  --sacb                            synonym for set-atomic-counter-block\n"
            "  --set-default-uniform-block name set binding\n"
            "                                    set name, descriptor set, and binding for\n"
            "                                    global default-uniform-block, with -R opt\n"

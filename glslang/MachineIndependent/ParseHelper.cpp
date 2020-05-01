@@ -254,23 +254,23 @@ void TParseContext::growGlobalUniformBlock(const TSourceLoc& loc, TType& memberT
     }
 }
 
-void TParseContext::growGlobalBufferBlock(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
+void TParseContext::growAtomicCounterBlock(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList)
 {
-    bool createBlock = globalBuffers.find(binding) == globalBuffers.end();
+    bool createBlock = atomicCounterBuffers.find(binding) == atomicCounterBuffers.end();
 
     if (createBlock) {
-        globalBufferBinding = intermediate.getGlobalBufferBinding();
-        globalBufferSet = intermediate.getGlobalBufferSet();
+        atomicCounterBlockBinding = intermediate.getAtomicCounterBlockBinding();
+        atomicCounterBlockSet = intermediate.getAtomicCounterBlockSet();
     }
 
     // use base class function to create/expand block
-    TParseContextBase::growGlobalBufferBlock(binding, loc, memberType, memberName, typeList);
-    TQualifier& qualifier = globalBuffers[binding]->getWritableType().getQualifier();
+    TParseContextBase::growAtomicCounterBlock(binding, loc, memberType, memberName, typeList);
+    TQualifier& qualifier = atomicCounterBuffers[binding]->getWritableType().getQualifier();
     qualifier.defaultBlock = true;
 
     if (spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
         // check for a Block storage override
-        TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getGlobalBufferBlockName());
+        TBlockStorageClass storageOverride = intermediate.getBlockStorageOverride(getAtomicCounterBlockName());
 
         if (storageOverride != EbsNone) {
             if (createBlock) {
@@ -308,21 +308,21 @@ void TParseContext::setUniformBlockDefaults(TType& block) const
 }
 
 
-const char* TParseContext::getGlobalBufferBlockName() const
+const char* TParseContext::getAtomicCounterBlockName() const
 {
-    const char* name = intermediate.getGlobalBufferBlockName();
+    const char* name = intermediate.getAtomicCounterBlockName();
     if (std::string(name) == "") {
-        return "gl_DefaultBufferBlock";
+        return "gl_AtomicCounterBlock";
     }
     else {
         return name;
     }
 }
-void TParseContext::finalizeGlobalBufferBlockLayout(TVariable&)
+void TParseContext::finalizeAtomicCounterBlockLayout(TVariable&)
 {
 }
 
-void TParseContext::setBufferBlockDefaults(TType& block) const
+void TParseContext::setAtomicCounterBlockDefaults(TType& block) const
 {
     block.getQualifier().layoutPacking = ElpStd430;
     block.getQualifier().layoutMatrix = ElmRowMajor;
@@ -6752,8 +6752,8 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
         updatedBlock = globalUniformBlock;
     }
     else {
-        growGlobalBufferBlock(bufferBinding, loc, type, identifier, nullptr);
-        updatedBlock = globalBuffers[bufferBinding];
+        growAtomicCounterBlock(bufferBinding, loc, type, identifier, nullptr);
+        updatedBlock = atomicCounterBuffers[bufferBinding];
     }
 
     //

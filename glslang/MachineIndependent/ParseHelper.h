@@ -91,8 +91,8 @@ public:
             globalUniformBlock(nullptr),
             globalUniformBinding(TQualifier::layoutBindingEnd),
             globalUniformSet(TQualifier::layoutSetEnd),
-            globalBufferBinding(TQualifier::layoutBindingEnd),
-            globalBufferSet(TQualifier::layoutSetEnd)
+            atomicCounterBlockBinding(TQualifier::layoutBindingEnd),
+            atomicCounterBlockSet(TQualifier::layoutSetEnd)
     {
         if (entryPoint != nullptr)
             sourceEntryPointName = *entryPoint;
@@ -157,8 +157,8 @@ public:
     // Manage the global uniform block (default uniforms in GLSL, $Global in HLSL)
     virtual void growGlobalUniformBlock(const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
 
-    // Manage global buffer (used for backing default uniform atomic uints in GLSL)
-    virtual void growGlobalBufferBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
+    // Manage global buffer (used for backing atomic counters in GLSL when using relaxed Vulkan semantics)
+    virtual void growAtomicCounterBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr);
 
     // Potentially rename shader entry point function
     void renameShaderFunction(TString*& name) const
@@ -232,21 +232,21 @@ protected:
     virtual void setUniformBlockDefaults(TType&) const { }
     virtual void finalizeGlobalUniformBlockLayout(TVariable&) {}
 
-    // Manage the global uniform block (used for default atomic_uints with Vulkan-Relaxed)
-    TMap<int, TVariable*> globalBuffers;
-    unsigned int globalBufferBinding;
-    unsigned int globalBufferSet;
-    TMap<int, int> bufferFirstNewMember;
+    // Manage the atomic counter block (used for atomic_uints with Vulkan-Relaxed)
+    TMap<int, TVariable*> atomicCounterBuffers;
+    unsigned int atomicCounterBlockBinding;
+    unsigned int atomicCounterBlockSet;
+    TMap<int, int> atomicCounterBlockFirstNewMember;
     // override this to set the language-specific name
-    virtual const char* getGlobalBufferBlockName() const { return ""; }
-    virtual void setBufferBlockDefaults(TType&) const {}
-    virtual void finalizeGlobalBufferBlockLayout(TVariable&) {}
-    bool isGlobalBufferBlock(const TSymbol& symbol) {
+    virtual const char* getAtomicCounterBlockName() const { return ""; }
+    virtual void setAtomicCounterBlockDefaults(TType&) const {}
+    virtual void finalizeAtomicCounterBlockLayout(TVariable&) {}
+    bool isAtomicCounterBlock(const TSymbol& symbol) {
         const TVariable* var = symbol.getAsVariable();
         if (!var)
             return false;
-        auto& at = globalBuffers.find(var->getType().getQualifier().layoutBinding);
-        return (at != globalBuffers.end() && (*at).second->getType() == var->getType());
+        auto& at = atomicCounterBuffers.find(var->getType().getQualifier().layoutBinding);
+        return (at != atomicCounterBuffers.end() && (*at).second->getType() == var->getType());
     }
 
     virtual void outputMessage(const TSourceLoc&, const char* szReason, const char* szToken,
@@ -312,7 +312,7 @@ public:
     void parserError(const char* s);     // for bison's yyerror
 
     virtual void growGlobalUniformBlock(const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr) override;
-    virtual void growGlobalBufferBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr) override;
+    virtual void growAtomicCounterBlock(int binding, const TSourceLoc&, TType&, const TString& memberName, TTypeList* typeList = nullptr) override;
 
     void reservedErrorCheck(const TSourceLoc&, const TString&);
     void reservedPpErrorCheck(const TSourceLoc&, const char* name, const char* op) override;
@@ -486,9 +486,9 @@ protected:
     virtual void finalizeGlobalUniformBlockLayout(TVariable&) override;
     virtual void setUniformBlockDefaults(TType& block) const override;
 
-    virtual const char* getGlobalBufferBlockName() const override;
-    virtual void finalizeGlobalBufferBlockLayout(TVariable&) override;
-    virtual void setBufferBlockDefaults(TType& block) const override;
+    virtual const char* getAtomicCounterBlockName() const override;
+    virtual void finalizeAtomicCounterBlockLayout(TVariable&) override;
+    virtual void setAtomicCounterBlockDefaults(TType& block) const override;
 
 public:
     //

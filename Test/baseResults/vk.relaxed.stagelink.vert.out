@@ -438,10 +438,10 @@ gl_FragCoord origin is upper left
                               Name 4  "main"
                               Name 9  "foo("
                               Name 13  "j"
-                              Name 14  "gl_DefaultBufferBlock"
-                              MemberName 14(gl_DefaultBufferBlock) 0  "counter3"
-                              MemberName 14(gl_DefaultBufferBlock) 1  "counter2"
-                              MemberName 14(gl_DefaultBufferBlock) 2  "counter1"
+                              Name 14  "gl_AtomicCounterBlock"
+                              MemberName 14(gl_AtomicCounterBlock) 0  "counter3"
+                              MemberName 14(gl_AtomicCounterBlock) 1  "counter2"
+                              MemberName 14(gl_AtomicCounterBlock) 2  "counter1"
                               Name 16  ""
                               Name 31  "v"
                               Name 35  "gl_DefaultUniformBlock"
@@ -457,19 +457,19 @@ gl_FragCoord origin is upper left
                               Name 72  "gl_VertexID"
                               Name 80  "gl_InstanceID"
                               Name 86  "io"
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Volatile
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Offset 0
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Volatile
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Offset 4
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Volatile
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Offset 8
-                              Decorate 14(gl_DefaultBufferBlock) BufferBlock
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Volatile
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Offset 0
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Volatile
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Offset 4
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Volatile
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Offset 8
+                              Decorate 14(gl_AtomicCounterBlock) BufferBlock
                               Decorate 16 DescriptorSet 0
                               Decorate 16 Binding 1
                               Decorate 34 ArrayStride 16
@@ -493,8 +493,8 @@ gl_FragCoord origin is upper left
                8:             TypeFunction 7(fvec4)
               11:             TypeInt 32 0
               12:             TypePointer Function 11(int)
-14(gl_DefaultBufferBlock):             TypeStruct 11(int) 11(int) 11(int)
-              15:             TypePointer Uniform 14(gl_DefaultBufferBlock)
+14(gl_AtomicCounterBlock):             TypeStruct 11(int) 11(int) 11(int)
+              15:             TypePointer Uniform 14(gl_AtomicCounterBlock)
               16:     15(ptr) Variable Uniform
               17:             TypeInt 32 1
               18:     17(int) Constant 1
@@ -593,10 +593,10 @@ gl_FragCoord origin is upper left
                               Name 4  "main"
                               Name 9  "foo("
                               Name 13  "j"
-                              Name 14  "gl_DefaultBufferBlock"
-                              MemberName 14(gl_DefaultBufferBlock) 0  "counter3"
-                              MemberName 14(gl_DefaultBufferBlock) 1  "counter2"
-                              MemberName 14(gl_DefaultBufferBlock) 2  "counter1"
+                              Name 14  "gl_AtomicCounterBlock"
+                              MemberName 14(gl_AtomicCounterBlock) 0  "counter3"
+                              MemberName 14(gl_AtomicCounterBlock) 1  "counter2"
+                              MemberName 14(gl_AtomicCounterBlock) 2  "counter1"
                               Name 16  ""
                               Name 31  "v"
                               Name 35  "gl_DefaultUniformBlock"
@@ -610,19 +610,19 @@ gl_FragCoord origin is upper left
                               Name 37  ""
                               Name 68  "o"
                               Name 70  "io"
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Volatile
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 0 Offset 0
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Volatile
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 1 Offset 4
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Volatile
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Coherent
-                              MemberDecorate 14(gl_DefaultBufferBlock) 2 Offset 8
-                              Decorate 14(gl_DefaultBufferBlock) BufferBlock
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Volatile
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 0 Offset 0
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Volatile
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 1 Offset 4
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Volatile
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Coherent
+                              MemberDecorate 14(gl_AtomicCounterBlock) 2 Offset 8
+                              Decorate 14(gl_AtomicCounterBlock) BufferBlock
                               Decorate 16 DescriptorSet 0
                               Decorate 16 Binding 1
                               Decorate 34 ArrayStride 16
@@ -645,8 +645,8 @@ gl_FragCoord origin is upper left
                8:             TypeFunction 7(fvec4)
               11:             TypeInt 32 0
               12:             TypePointer Function 11(int)
-14(gl_DefaultBufferBlock):             TypeStruct 11(int) 11(int) 11(int)
-              15:             TypePointer Uniform 14(gl_DefaultBufferBlock)
+14(gl_AtomicCounterBlock):             TypeStruct 11(int) 11(int) 11(int)
+              15:             TypePointer Uniform 14(gl_AtomicCounterBlock)
               16:     15(ptr) Variable Uniform
               17:             TypeInt 32 1
               18:     17(int) Constant 2

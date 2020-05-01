@@ -248,11 +248,11 @@ public:
         nanMinMaxClamp(false),
         depthReplacing(false),
         globalUniformBlockName(""),
-        globalBufferBlockName(""),
+        atomicCounterBlockName(""),
         globalUniformBlockSet(TQualifier::layoutSetEnd),
         globalUniformBlockBinding(TQualifier::layoutBindingEnd),
-        globalBufferBlockSet(TQualifier::layoutSetEnd),
-        globalBufferBlockBinding(TQualifier::layoutBindingEnd)
+        atomicCounterBlockSet(TQualifier::layoutSetEnd),
+        atomicCounterBlockBinding(TQualifier::layoutBindingEnd)
 #ifndef GLSLANG_WEB
         ,
         implicitThisName("@this"), implicitCounterName("@count"),
@@ -492,12 +492,12 @@ public:
     void setGlobalUniformBinding(unsigned int binding) { globalUniformBlockBinding = binding; }
     unsigned int getGlobalUniformBinding() const { return globalUniformBlockBinding; }
 
-    void setGlobalBufferBlockName(const char* name) { globalBufferBlockName = std::string(name); }
-    const char* getGlobalBufferBlockName() const { return globalBufferBlockName.c_str(); }
-    void setGlobalBufferSet(unsigned int set) { globalBufferBlockSet = set; }
-    unsigned int getGlobalBufferSet() const { return globalBufferBlockSet; }
-    void setGlobalBufferBinding(unsigned int binding) { globalBufferBlockBinding = binding; }
-    unsigned int getGlobalBufferBinding() const { return globalBufferBlockBinding; }
+    void setAtomicCounterBlockName(const char* name) { atomicCounterBlockName = std::string(name); }
+    const char* getAtomicCounterBlockName() const { return atomicCounterBlockName.c_str(); }
+    void setAtomicCounterBlockSet(unsigned int set) { atomicCounterBlockSet = set; }
+    unsigned int getAtomicCounterBlockSet() const { return atomicCounterBlockSet; }
+    void setAtomicCounterBlockBinding(unsigned int binding) { atomicCounterBlockBinding = binding; }
+    unsigned int getAtomicCounterBlockBinding() const { return atomicCounterBlockBinding; }
 
 
     void setUseStorageBuffer()
@@ -1047,11 +1047,11 @@ protected:
     std::unordered_map<std::string, TBlockStorageClass> blockBackingOverrides;
 
     std::string globalUniformBlockName;
-    std::string globalBufferBlockName;
+    std::string atomicCounterBlockName;
     unsigned int globalUniformBlockSet;
     unsigned int globalUniformBlockBinding;
-    unsigned int globalBufferBlockSet;
-    unsigned int globalBufferBlockBinding;
+    unsigned int atomicCounterBlockSet;
+    unsigned int atomicCounterBlockBinding;
 
 
     std::unordered_set<int> usedConstantId; // specialization constant ids used
