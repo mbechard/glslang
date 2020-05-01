@@ -156,7 +156,7 @@ int MapVersionToIndex(int version)
     return index;
 }
 
-const int SpvVersionCount = 3;  // index range in MapSpvVersionToIndex
+const int SpvVersionCount = 4;  // index range in MapSpvVersionToIndex
 
 int MapSpvVersionToIndex(const SpvVersion& spvVersion)
 {
@@ -165,7 +165,10 @@ int MapSpvVersionToIndex(const SpvVersion& spvVersion)
     if (spvVersion.openGl > 0)
         index = 1;
     else if (spvVersion.vulkan > 0)
-        index = 2;
+        if (!spvVersion.vulkanRelaxed)
+            index = 2;
+        else
+            index = 3;
 
     assert(index < SpvVersionCount);
 
