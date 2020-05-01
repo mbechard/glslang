@@ -407,7 +407,7 @@ void ProcessResourceSetBindingBase(int& argc, char**& argv, std::array<std::vect
 
 //
 // Process an optional binding base of one the forms:
-//   --argname name {uniform|buffer|pushconstant}
+//   --argname name {uniform|buffer|push_constant}
 void ProcessBlockStorage(int& argc, char**& argv, std::vector<std::pair<std::string, glslang::TBlockStorageClass>>& storage)
 {
     if (argc < 3)
@@ -422,7 +422,7 @@ void ProcessBlockStorage(int& argc, char**& argv, std::vector<std::pair<std::str
     else if (strBacking == "buffer") {
         blockStorage = glslang::EbsStorageBuffer;
     }
-    else if (strBacking == "pushconstant") {
+    else if (strBacking == "push_constant") {
         blockStorage = glslang::EbsPushConstant;
     }
     else {
@@ -1770,10 +1770,13 @@ void usage()
            "  --resource-set-binding [stage] set\n"
            "                                    set descriptor set for all resources\n"
            "  --rsb                             synonym for --resource-set-binding\n"
-           "  --set-block-storage name {uniform|buffer|pushconstant}\n"
-           "                                    set the storage class of a uniform, buffer,\n"
-           "                                    or push constant variable block declared in\n"
-           "                                    in the program, when using -R option\n"
+           "  --set-block-backing name {uniform|buffer|push_constant}\n"
+           "                                    changes the backing type of a uniform, buffer,\n"
+           "                                    or push_constant block declared in\n"
+           "                                    in the program, when using -R option.\n"
+           "                                    This can be used to change the backing\n"
+           "                                    for existing blocks as well as implicit ones\n"
+           "                                    such as 'gl_DefaultUniformBlock'.\n"
            "  --sbs                             synonym for set-block-storage\n"
            "  --set-atomic-counter-block name set binding\n"
            "                                    set name, descriptor set, and binding for\n"
