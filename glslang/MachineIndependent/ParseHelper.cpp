@@ -5954,7 +5954,7 @@ void TParseContext::layoutTypeCheck(const TSourceLoc& loc, const TType& type)
                 error(loc, "sampler binding not less than gl_MaxCombinedTextureImageUnits", "binding", type.isArray() ? "(using array)" : "");
 #endif
         }
-        if (type.isAtomic()) {
+        if (type.isAtomic() && !spvVersion.vulkanRelaxed) {
             if (qualifier.layoutBinding >= (unsigned int)resources.maxAtomicCounterBindings) {
                 error(loc, "atomic_uint binding is too large; see gl_MaxAtomicCounterBindings", "binding", "");
                 return;
@@ -6737,11 +6737,10 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
         type.getQualifier().volatil = true;
         type.getQualifier().coherent = true;
 
-        // xxTODO: use binding and offset layout parameters
-        //         to make buffer layout match appropriately
-        //bufferBinding = type.getQualifier().layoutBinding;
-        bufferBinding = TQualifier::layoutBindingEnd; 
+        // xxTODO: use logic from fixOffset() to apply explicit member offset
+        bufferBinding = type.getQualifier().layoutBinding;
         type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
+        type.getQualifier().explicitOffset = false;
     }
 #endif
 

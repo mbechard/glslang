@@ -201,7 +201,6 @@ unsigned int globalUniformSet;
 
 bool setGlobalBufferBlock = false;
 std::string atomicCounterBlockName;
-unsigned int atomicCounterBlockBinding;
 unsigned int atomicCounterBlockSet;
 
 // Add things like "#define ..." to a preamble to use in the beginning of the shader.
@@ -470,40 +469,48 @@ bool isValidIdentifier(const char* str) {
 // Process setings for either the global buffer block or global unfirom block
 // of the form:
 //      --argname name set binding
-void ProcessGlobalBlockSettings(int& argc, char**& argv, std::string& name, unsigned int& set, unsigned int& binding)
+void ProcessGlobalBlockSettings(int& argc, char**& argv, std::string* name, unsigned int* set, unsigned int* binding)
 {
     if (argc < 4)
         usage();
 
     unsigned int curArg = 1;
 
-    if (!isValidIdentifier(argv[curArg])) {
-        printf("%s: invalid identifier\n", argv[curArg]);
-        usage();
+    assert(name || set || binding);
+
+    if (name) {
+        if (!isValidIdentifier(argv[curArg])) {
+            printf("%s: invalid identifier\n", argv[curArg]);
+            usage();
+        }
+        *name = argv[curArg];
+
+        curArg++;
     }
-    name = argv[curArg];
 
-    curArg++;
+    if (set) {
+        errno = 0;
+        int setVal = ::strtol(argv[curArg], NULL, 10);
+        if (errno || setVal < 0) {
+            printf("%s: invalid set\n", argv[curArg]);
+            usage();
+        }
+        *set = setVal;
 
-    errno = 0;
-    int setVal = ::strtol(argv[curArg], NULL, 10);
-    if (errno || setVal < 0) {
-        printf("%s: invalid set\n", argv[curArg]);
-        usage();
+        curArg++;
     }
-    set = setVal;
 
-    curArg++;
+    if (binding) {
+        errno = 0;
+        int bindingVal = ::strtol(argv[curArg], NULL, 10);
+        if (errno || bindingVal < 0) {
+            printf("%s: invalid binding\n", argv[curArg]);
+            usage();
+        }
+        *binding = bindingVal;
 
-    errno = 0;
-    int bindingVal = ::strtol(argv[curArg], NULL, 10);
-    if (errno || bindingVal < 0) {
-        printf("%s: invalid binding\n", argv[curArg]);
-        usage();
+        curArg++;
     }
-    binding = bindingVal;
-
-    curArg++;
 
     argc -= (curArg - 1);
     argv += (curArg - 1);
@@ -681,11 +688,11 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                         ProcessBlockStorage(argc, argv, blockStorageOverrides);
                     } else if (lowerword == "set-atomic-counter-block" ||
                                lowerword == "sacb") {
-                        ProcessGlobalBlockSettings(argc, argv, atomicCounterBlockName, atomicCounterBlockSet, atomicCounterBlockBinding);
+                        ProcessGlobalBlockSettings(argc, argv, &atomicCounterBlockName, &atomicCounterBlockSet, nullptr);
                         setGlobalBufferBlock = true;
                     } else if (lowerword == "set-default-uniform-block" ||
                                lowerword == "sdub") {
-                        ProcessGlobalBlockSettings(argc, argv, globalUniformName, globalUniformSet, globalUniformBinding);
+                        ProcessGlobalBlockSettings(argc, argv, &globalUniformName, &globalUniformSet, &globalUniformBinding);
                         setGlobalUniformBlock = true;
                     } else if (lowerword == "shift-image-bindings" ||  // synonyms
                                lowerword == "shift-image-binding"  ||
@@ -1182,7 +1189,6 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
             if (setGlobalBufferBlock) {
                 shader->setAtomicCounterBlockName(atomicCounterBlockName.c_str());
                 shader->setAtomicCounterBlockSet(atomicCounterBlockSet);
-                shader->setAtomicCounterBlockBinding(atomicCounterBlockBinding);
             }
 
             if (setGlobalUniformBlock) {
@@ -1778,9 +1784,9 @@ void usage()
            "                                    for existing blocks as well as implicit ones\n"
            "                                    such as 'gl_DefaultUniformBlock'.\n"
            "  --sbs                             synonym for set-block-storage\n"
-           "  --set-atomic-counter-block name set binding\n"
-           "                                    set name, descriptor set, and binding for\n"
-           "                                    atomic counter block, with -R opt\n"
+           "  --set-atomic-counter-block name set\n"
+           "                                    set name, and descriptor set for\n"
+           "                                    atomic counter blocks, with -R opt\n"
            "  --sacb                            synonym for set-atomic-counter-block\n"
            "  --set-default-uniform-block name set binding\n"
            "                                    set name, descriptor set, and binding for\n"

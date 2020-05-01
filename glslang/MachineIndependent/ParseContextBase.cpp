@@ -655,7 +655,7 @@ void TParseContextBase::growAtomicCounterBlock(int binding, const TSourceLoc& lo
     }
 
     // Update with binding and set
-    atomicCounterBuffer->getWritableType().getQualifier().layoutBinding = binding != TQualifier::layoutBindingEnd ? binding : atomicCounterBlockBinding;
+    atomicCounterBuffer->getWritableType().getQualifier().layoutBinding = atomicCounterBlockBinding;
     atomicCounterBuffer->getWritableType().getQualifier().layoutSet = atomicCounterBlockSet;
 
     // Add the requested member as a member to the global block.

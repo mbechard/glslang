@@ -28,8 +28,9 @@ layout(packed) buffer BufferBlock {
 } bufferInstance;
 
 // atomic_uint will be converted to uint and gathered in a buffer block
-layout(binding = 0) uniform atomic_uint counter1; // binding and offset are ignored
-layout(binding = 0) uniform atomic_uint counter2; // bindng and offset are ignored
+layout(binding = 0) uniform atomic_uint counter1; // offset not used
+layout(binding = 0) uniform atomic_uint counter2; // offset not used
+layout(binding = 1) uniform atomic_uint counter3; // offset not used
 
 // atomic counter functions will be converted to equivalent integer atomic operations
 uint bar() {
@@ -51,6 +52,9 @@ uint bar() {
     
     j = atomicCounterExchange(counter1, j);
     j = atomicCounterCompSwap(counter1, 0, j);
+
+    atomicCounterIncrement(counter2);
+    atomicCounterIncrement(counter3);
 
     memoryBarrierAtomicCounter();
     
