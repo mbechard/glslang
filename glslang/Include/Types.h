@@ -769,6 +769,10 @@ public:
 #endif
         switch (newBacking) {
         case EbsUniform :
+            if (layoutPacking == ElpStd430) {
+                // std430 would not be valid
+                layoutPacking = ElpStd140;
+            }
             storage = EvqUniform;
             break;
         case EbsStorageBuffer : 
