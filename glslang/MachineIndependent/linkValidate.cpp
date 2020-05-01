@@ -546,11 +546,6 @@ void TIntermediate::mergeLinkerObjects(TInfoSink& infoSink, TIntermSequence& lin
                 if (! symbol->getQualifier().hasBinding() && unitSymbol->getQualifier().hasBinding())
                     symbol->getQualifier().layoutBinding = unitSymbol->getQualifier().layoutBinding;
 
-                // Similarly for location
-                if (!symbol->getQualifier().hasLocation() && unitSymbol->getQualifier().hasLocation()) {
-                    symbol->getQualifier().layoutLocation = unitSymbol->getQualifier().layoutLocation;
-                }
-
                 // Update implicit array sizes
                 mergeImplicitArraySizes(symbol->getWritableType(), unitSymbol->getType());
 
