@@ -501,9 +501,12 @@ void TIntermediate::mergeBodies(TInfoSink& infoSink, TIntermSequence& globals, c
 }
 
 static inline bool isSameInterface(TIntermSymbol* symbol, EShLanguage stage, TIntermSymbol* unitSymbol, EShLanguage unitStage) {
-    return (stage == unitStage && symbol->getQualifier().storage == unitSymbol->getQualifier().storage) ||
-        (unitStage && symbol->getQualifier().storage == EvqUniform  && unitSymbol->getQualifier().storage == EvqUniform) ||
-        (unitStage && symbol->getQualifier().storage == EvqBuffer   && unitSymbol->getQualifier().storage == EvqBuffer) ||
+    return // 1) same stage and same shader interface
+        (stage == unitStage && symbol->getType().getShaderInterface() == unitSymbol->getType().getShaderInterface()) ||
+        // 2) accross stages and both are uniform or buffer
+        (symbol->getQualifier().storage == EvqUniform  && unitSymbol->getQualifier().storage == EvqUniform) ||
+        (symbol->getQualifier().storage == EvqBuffer   && unitSymbol->getQualifier().storage == EvqBuffer) ||
+        // 3) in/out matched across stage boundary
         (stage < unitStage && symbol->getQualifier().storage == EvqVaryingIn  && unitSymbol->getQualifier().storage == EvqVaryingOut) ||
         (unitStage < stage && symbol->getQualifier().storage == EvqVaryingOut && unitSymbol->getQualifier().storage == EvqVaryingIn);
 }
@@ -698,12 +701,7 @@ void TIntermediate::mergeLinkerObjects(TInfoSink& infoSink, TIntermSequence& lin
             // If they are both blocks in the same shader interface,
             // match by the block-name, not the identifier name.
             if (symbol->getType().getBasicType() == EbtBlock && unitSymbol->getType().getBasicType() == EbtBlock) {
-                if (getStage() == unitStage && symbol->getType().getShaderInterface() == unitSymbol->getType().getShaderInterface()) {
-                    // matching in same shader stage
-                    isSameSymbol = symbol->getType().getTypeName() == unitSymbol->getType().getTypeName();
-                }
-                else if (isSameInterface(symbol, getStage(), unitSymbol, unitStage)) {
-                    // matching accross stages
+                if (isSameInterface(symbol, getStage(), unitSymbol, unitStage)) {
                     isSameSymbol = symbol->getType().getTypeName() == unitSymbol->getType().getTypeName();
                 }
             }
