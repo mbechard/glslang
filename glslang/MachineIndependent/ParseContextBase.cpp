@@ -650,6 +650,7 @@ void TParseContextBase::growAtomicCounterBlock(int binding, const TSourceLoc& lo
         
         TType blockType(new TTypeList, *NewPoolTString(charBuffer), blockQualifier);
         setUniformBlockDefaults(blockType);
+        blockType.getQualifier().layoutPacking = ElpStd430;
         atomicCounterBuffer = new TVariable(NewPoolTString(""), blockType, true);
         // If we arn't auto mapping bindings then set the block to use the same
         // binding as what the atomic was set to use
