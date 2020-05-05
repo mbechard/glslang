@@ -645,7 +645,7 @@ void TParseContextBase::growAtomicCounterBlock(int binding, const TSourceLoc& lo
             snprintf(charBuffer, 512, "%s_%d", getAtomicCounterBlockName(), binding);
         }
         else {
-            snprintf(charBuffer, 512, "%s", getAtomicCounterBlockName());
+            snprintf(charBuffer, 512, "%s_0", getAtomicCounterBlockName());
         }
         
         TType blockType(new TTypeList, *NewPoolTString(charBuffer), blockQualifier);
