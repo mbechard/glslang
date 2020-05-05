@@ -6771,9 +6771,6 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
     // merge qualifiers
     mergeObjectLayoutQualifiers(updatedBlock->getWritableType().getQualifier(), type.getQualifier(), true);
 
-    // do checks on created symbol
-    layoutObjectCheck(loc, *symbol);
-
     success = true;
     return nullptr;
 }
