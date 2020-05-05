@@ -259,7 +259,6 @@ void TParseContext::growAtomicCounterBlock(int binding, const TSourceLoc& loc, T
     bool createBlock = atomicCounterBuffers.find(binding) == atomicCounterBuffers.end();
 
     if (createBlock) {
-        atomicCounterBlockBinding = intermediate.getAtomicCounterBlockBinding();
         atomicCounterBlockSet = intermediate.getAtomicCounterBlockSet();
     }
 

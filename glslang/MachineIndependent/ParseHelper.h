@@ -91,7 +91,6 @@ public:
             globalUniformBlock(nullptr),
             globalUniformBinding(TQualifier::layoutBindingEnd),
             globalUniformSet(TQualifier::layoutSetEnd),
-            atomicCounterBlockBinding(TQualifier::layoutBindingEnd),
             atomicCounterBlockSet(TQualifier::layoutSetEnd)
     {
         if (entryPoint != nullptr)
@@ -234,7 +233,6 @@ protected:
 
     // Manage the atomic counter block (used for atomic_uints with Vulkan-Relaxed)
     TMap<int, TVariable*> atomicCounterBuffers;
-    unsigned int atomicCounterBlockBinding;
     unsigned int atomicCounterBlockSet;
     TMap<int, int> atomicCounterBlockFirstNewMember;
     // override this to set the language-specific name

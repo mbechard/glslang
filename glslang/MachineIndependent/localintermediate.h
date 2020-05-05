@@ -251,8 +251,7 @@ public:
         atomicCounterBlockName(""),
         globalUniformBlockSet(TQualifier::layoutSetEnd),
         globalUniformBlockBinding(TQualifier::layoutBindingEnd),
-        atomicCounterBlockSet(TQualifier::layoutSetEnd),
-        atomicCounterBlockBinding(TQualifier::layoutBindingEnd)
+        atomicCounterBlockSet(TQualifier::layoutSetEnd)
 #ifndef GLSLANG_WEB
         ,
         implicitThisName("@this"), implicitCounterName("@count"),
@@ -496,8 +495,6 @@ public:
     const char* getAtomicCounterBlockName() const { return atomicCounterBlockName.c_str(); }
     void setAtomicCounterBlockSet(unsigned int set) { atomicCounterBlockSet = set; }
     unsigned int getAtomicCounterBlockSet() const { return atomicCounterBlockSet; }
-    void setAtomicCounterBlockBinding(unsigned int binding) { atomicCounterBlockBinding = binding; }
-    unsigned int getAtomicCounterBlockBinding() const { return atomicCounterBlockBinding; }
 
 
     void setUseStorageBuffer()
@@ -1051,7 +1048,6 @@ protected:
     unsigned int globalUniformBlockSet;
     unsigned int globalUniformBlockBinding;
     unsigned int atomicCounterBlockSet;
-    unsigned int atomicCounterBlockBinding;
 
 
     std::unordered_set<int> usedConstantId; // specialization constant ids used
