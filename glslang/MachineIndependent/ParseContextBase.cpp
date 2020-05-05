@@ -651,12 +651,15 @@ void TParseContextBase::growAtomicCounterBlock(int binding, const TSourceLoc& lo
         TType blockType(new TTypeList, *NewPoolTString(charBuffer), blockQualifier);
         setUniformBlockDefaults(blockType);
         atomicCounterBuffer = new TVariable(NewPoolTString(""), blockType, true);
+        // If we arn't auto mapping bindings then set the block to use the same
+        // binding as what the atomic was set to use
+        if (!intermediate.getAutoMapBindings()) {
+            atomicCounterBuffer->getWritableType().getQualifier().layoutBinding = binding;
+        }
         bufferNewMember = 0;
-    }
 
-    // Update with binding and set
-    atomicCounterBuffer->getWritableType().getQualifier().layoutBinding = atomicCounterBlockBinding;
-    atomicCounterBuffer->getWritableType().getQualifier().layoutSet = atomicCounterBlockSet;
+        atomicCounterBuffer->getWritableType().getQualifier().layoutSet = atomicCounterBlockSet;
+    }
 
     // Add the requested member as a member to the global block.
     TType* type = new TType;
