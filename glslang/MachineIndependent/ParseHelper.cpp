@@ -6702,10 +6702,6 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
         return nullptr;
     }
 
-    // use buffer block instead of uniform block for atomic ints,
-    // so they can be written
-    bool useBuffer = (type.getBasicType() == EbtAtomicUint);
-
     if (type.getQualifier().hasLocation()) {
         warn(loc, "ignoring layout qualifier for uniform", identifier.c_str(), "location");
         type.getQualifier().layoutLocation = TQualifier::layoutLocationEnd;
@@ -6729,8 +6725,11 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
     layoutTypeCheck(loc, type);
 
     int bufferBinding = TQualifier::layoutBindingEnd;
+    TVariable* updatedBlock = nullptr;
+
 #ifndef GLSLANG_WEB
-    if (type.getBasicType() == EbtAtomicUint) {
+    // Convert atomic_uint into members of a buffer block
+    if (type.isAtomic()) {
         type.setBasicType(EbtUint);
         type.getQualifier().storage = EvqBuffer;
 
@@ -6741,18 +6740,14 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
         bufferBinding = type.getQualifier().layoutBinding;
         type.getQualifier().layoutBinding = TQualifier::layoutBindingEnd;
         type.getQualifier().explicitOffset = false;
+        growAtomicCounterBlock(bufferBinding, loc, type, identifier, nullptr);
+        updatedBlock = atomicCounterBuffers[bufferBinding];
     }
 #endif
 
-    TVariable* updatedBlock = nullptr;
-
-    if (!useBuffer) {
+    if (!updatedBlock) {
         growGlobalUniformBlock(loc, type, identifier, nullptr);
         updatedBlock = globalUniformBlock;
-    }
-    else {
-        growAtomicCounterBlock(bufferBinding, loc, type, identifier, nullptr);
-        updatedBlock = atomicCounterBuffers[bufferBinding];
     }
 
     //
@@ -6766,7 +6761,10 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
     TSymbol* symbol = symbolTable.find(identifier);
 
     if (!symbol) {
-        error(loc, "error adding uniform to global uniform block", identifier.c_str(), "");
+        if (updatedBlock == globalUniformBlock)
+            error(loc, "error adding uniform to default uniform block", identifier.c_str(), "");
+        else
+            error(loc, "error adding atomic counter to atomic counter block", identifier.c_str(), "");
         return nullptr;
     }
 
