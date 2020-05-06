@@ -11,7 +11,7 @@ gl_FragCoord origin is upper left
 0:20          add ( temp highp uint)
 0:20            AtomicAdd ( global highp uint)
 0:20              counter1: direct index for structure ( coherent volatile buffer highp uint)
-0:20                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:20                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 0:20                Constant:
 0:20                  0 (const uint)
 0:20              Constant:
@@ -19,7 +19,7 @@ gl_FragCoord origin is upper left
 0:20            subtract ( temp highp uint)
 0:20              AtomicAdd ( global highp uint)
 0:20                counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:20                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:20                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 0:20                  Constant:
 0:20                    1 (const uint)
 0:20                Constant:
@@ -89,7 +89,7 @@ gl_FragCoord origin is upper left
 0:?   Linker Objects
 0:?     'o' ( out highp 4-component vector of float)
 0:?     'anon@0' (layout( row_major std140) uniform block{ uniform highp 4-component vector of float a,  uniform highp 2-component vector of float b1,  uniform highp 2-component vector of float b2,  uniform highp 4-component vector of float c1,  uniform highp 4-component vector of float d})
-0:?     'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:?     'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 
 vk.relaxed.link2.frag
 Shader version: 460
@@ -104,7 +104,7 @@ gl_FragCoord origin is upper left
 0:15          add ( temp highp uint)
 0:15            AtomicAdd ( global highp uint)
 0:15              counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:15                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:15                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:15                Constant:
 0:15                  1 (const uint)
 0:15              Constant:
@@ -112,7 +112,7 @@ gl_FragCoord origin is upper left
 0:15            subtract ( temp highp uint)
 0:15              AtomicAdd ( global highp uint)
 0:15                counter3: direct index for structure ( coherent volatile buffer highp uint)
-0:15                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:15                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:15                  Constant:
 0:15                    0 (const uint)
 0:15                Constant:
@@ -173,7 +173,7 @@ gl_FragCoord origin is upper left
 0:18          'v' ( temp highp 4-component vector of float)
 0:?   Linker Objects
 0:?     'anon@0' (layout( row_major std140) uniform block{ uniform highp 4-component vector of float a,  uniform highp 2-component vector of float b2,  uniform highp 2-component vector of float b1,  uniform highp 4-component vector of float c2,  uniform highp 4-component vector of float d})
-0:?     'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:?     'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 
 
 Linked fragment stage:
@@ -191,7 +191,7 @@ gl_FragCoord origin is upper left
 0:20          add ( temp highp uint)
 0:20            AtomicAdd ( global highp uint)
 0:20              counter1: direct index for structure ( coherent volatile buffer highp uint)
-0:20                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
+0:20                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
 0:20                Constant:
 0:20                  0 (const uint)
 0:20              Constant:
@@ -199,7 +199,7 @@ gl_FragCoord origin is upper left
 0:20            subtract ( temp highp uint)
 0:20              AtomicAdd ( global highp uint)
 0:20                counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:20                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
+0:20                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
 0:20                  Constant:
 0:20                    1 (const uint)
 0:20                Constant:
@@ -275,7 +275,7 @@ gl_FragCoord origin is upper left
 0:15          add ( temp highp uint)
 0:15            AtomicAdd ( global highp uint)
 0:15              counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:15                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
+0:15                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
 0:15                Constant:
 0:15                  1 (const uint)
 0:15              Constant:
@@ -283,7 +283,7 @@ gl_FragCoord origin is upper left
 0:15            subtract ( temp highp uint)
 0:15              AtomicAdd ( global highp uint)
 0:15                counter3: direct index for structure ( coherent volatile buffer highp uint)
-0:15                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
+0:15                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
 0:15                  Constant:
 0:15                    2 (const uint)
 0:15                Constant:
@@ -345,7 +345,7 @@ gl_FragCoord origin is upper left
 0:?   Linker Objects
 0:?     'o' ( out highp 4-component vector of float)
 0:?     'anon@0' (layout( row_major std140) uniform block{ uniform highp 4-component vector of float a,  uniform highp 2-component vector of float b1,  uniform highp 2-component vector of float b2,  uniform highp 4-component vector of float c1,  uniform highp 4-component vector of float d,  uniform highp 4-component vector of float c2})
-0:?     'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
+0:?     'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2,  coherent volatile buffer highp uint counter3})
 
 // Module Version 10000
 // Generated by (magic number): 80008

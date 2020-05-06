@@ -10,7 +10,7 @@ Shader version: 460
 0:19          add ( temp highp uint)
 0:19            AtomicAdd ( global highp uint)
 0:19              counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:19                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:19                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:19                Constant:
 0:19                  1 (const uint)
 0:19              Constant:
@@ -18,7 +18,7 @@ Shader version: 460
 0:19            subtract ( temp highp uint)
 0:19              AtomicAdd ( global highp uint)
 0:19                counter3: direct index for structure ( coherent volatile buffer highp uint)
-0:19                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:19                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:19                  Constant:
 0:19                    0 (const uint)
 0:19                Constant:
@@ -112,7 +112,7 @@ Shader version: 460
 0:?   Linker Objects
 0:?     'io' (layout( location=0) smooth out highp 4-component vector of float)
 0:?     'anon@0' (layout( row_major std140) uniform block{ uniform highp 4-component vector of float a,  uniform highp 2-component vector of float b2,  uniform highp 2-component vector of float b1,  uniform highp 4-component vector of float c2,  uniform highp 4-component vector of float d,  uniform 4-element array of highp 4-component vector of float s})
-0:?     'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:?     'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:?     'gl_VertexID' ( in int VertexIndex)
 0:?     'gl_InstanceID' ( in int InstanceIndex)
 
@@ -129,7 +129,7 @@ gl_FragCoord origin is upper left
 0:20          add ( temp highp uint)
 0:20            AtomicAdd ( global highp uint)
 0:20              counter1: direct index for structure ( coherent volatile buffer highp uint)
-0:20                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:20                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 0:20                Constant:
 0:20                  0 (const uint)
 0:20              Constant:
@@ -137,7 +137,7 @@ gl_FragCoord origin is upper left
 0:20            subtract ( temp highp uint)
 0:20              AtomicAdd ( global highp uint)
 0:20                counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:20                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:20                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 0:20                  Constant:
 0:20                    1 (const uint)
 0:20                Constant:
@@ -208,7 +208,7 @@ gl_FragCoord origin is upper left
 0:?     'io' (layout( location=0) smooth in highp 4-component vector of float)
 0:?     'o' ( out highp 4-component vector of float)
 0:?     'anon@0' (layout( row_major std140) uniform block{ uniform highp 4-component vector of float a,  uniform highp 2-component vector of float b1,  uniform highp 2-component vector of float b2,  uniform highp 4-component vector of float c1,  uniform highp 4-component vector of float d})
-0:?     'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:?     'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 
 
 Linked vertex stage:
@@ -228,7 +228,7 @@ Shader version: 460
 0:19          add ( temp highp uint)
 0:19            AtomicAdd ( global highp uint)
 0:19              counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:19                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:19                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:19                Constant:
 0:19                  1 (const uint)
 0:19              Constant:
@@ -236,7 +236,7 @@ Shader version: 460
 0:19            subtract ( temp highp uint)
 0:19              AtomicAdd ( global highp uint)
 0:19                counter3: direct index for structure ( coherent volatile buffer highp uint)
-0:19                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:19                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:19                  Constant:
 0:19                    0 (const uint)
 0:19                Constant:
@@ -330,7 +330,7 @@ Shader version: 460
 0:?   Linker Objects
 0:?     'io' (layout( location=0) smooth out highp 4-component vector of float)
 0:?     'anon@0' (layout( row_major std140) uniform block{ uniform highp 4-component vector of float a,  uniform highp 2-component vector of float b2,  uniform highp 2-component vector of float b1,  uniform highp 4-component vector of float c2,  uniform highp 4-component vector of float d,  uniform 4-element array of highp 4-component vector of float s})
-0:?     'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
+0:?     'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter3,  coherent volatile buffer highp uint counter2})
 0:?     'gl_VertexID' ( in int VertexIndex)
 0:?     'gl_InstanceID' ( in int InstanceIndex)
 Shader version: 460
@@ -345,7 +345,7 @@ gl_FragCoord origin is upper left
 0:20          add ( temp highp uint)
 0:20            AtomicAdd ( global highp uint)
 0:20              counter1: direct index for structure ( coherent volatile buffer highp uint)
-0:20                'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:20                'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 0:20                Constant:
 0:20                  0 (const uint)
 0:20              Constant:
@@ -353,7 +353,7 @@ gl_FragCoord origin is upper left
 0:20            subtract ( temp highp uint)
 0:20              AtomicAdd ( global highp uint)
 0:20                counter2: direct index for structure ( coherent volatile buffer highp uint)
-0:20                  'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:20                  'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 0:20                  Constant:
 0:20                    1 (const uint)
 0:20                Constant:
@@ -424,7 +424,7 @@ gl_FragCoord origin is upper left
 0:?     'io' (layout( location=0) smooth in highp 4-component vector of float)
 0:?     'o' ( out highp 4-component vector of float)
 0:?     'anon@0' (layout( row_major std140) uniform block{ uniform highp 4-component vector of float a,  uniform highp 2-component vector of float b1,  uniform highp 2-component vector of float b2,  uniform highp 4-component vector of float c1,  uniform highp 4-component vector of float d})
-0:?     'anon@1' (layout( row_major std140) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
+0:?     'anon@1' (layout( row_major std430) buffer block{ coherent volatile buffer highp uint counter1,  coherent volatile buffer highp uint counter2})
 
 // Module Version 10000
 // Generated by (magic number): 80008
