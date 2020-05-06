@@ -6687,8 +6687,8 @@ void TParseContext::declareTypeDefaults(const TSourceLoc& loc, const TPublicType
 #endif
 }
 
-TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc, TString& identifier, const TPublicType& publicType,
-    TArraySizes* arraySizes, TIntermTyped* initializer, TType& type, bool& success)
+bool TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc, TString& identifier, const TPublicType& publicType,
+    TArraySizes* arraySizes, TIntermTyped* initializer, TType& type)
 {
     if (parsingBuiltins || symbolTable.atBuiltInLevel() || !symbolTable.atGlobalLevel() ||
         type.getQualifier().storage != EvqUniform ||
@@ -6697,8 +6697,7 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
             || type.getBasicType() == EbtAtomicUint
 #endif
         )) {
-        success = false;
-        return nullptr;
+        return false;
     }
 
     if (type.getQualifier().hasLocation()) {
@@ -6764,14 +6763,13 @@ TIntermNode* TParseContext::vkRelaxedRemapUniformVariable(const TSourceLoc& loc,
             error(loc, "error adding uniform to default uniform block", identifier.c_str(), "");
         else
             error(loc, "error adding atomic counter to atomic counter block", identifier.c_str(), "");
-        return nullptr;
+        return false;
     }
 
     // merge qualifiers
     mergeObjectLayoutQualifiers(updatedBlock->getWritableType().getQualifier(), type.getQualifier(), true);
 
-    success = true;
-    return nullptr;
+    return true;
 }
 
 //
@@ -6864,12 +6862,10 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
         reservedErrorCheck(loc, identifier);
 
     if (symbol == nullptr && spvVersion.vulkan > 0 && spvVersion.vulkanRelaxed) {
-        bool success = false;
-        TIntermNode* result;
-        result = vkRelaxedRemapUniformVariable(loc, identifier, publicType, arraySizes, initializer, type, success);
+        bool remapped = vkRelaxedRemapUniformVariable(loc, identifier, publicType, arraySizes, initializer, type);
 
-        if (success) {
-            return result;
+        if (remapped) {
+            return nullptr;
         }
     }
 
