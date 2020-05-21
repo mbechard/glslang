@@ -6628,7 +6628,8 @@ TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, T
             realFunc.addParameter((*function)[i]);
         }
 
-        realFunc.addParameter(TParameter{ 0, &uintType });
+        TParameter tmpP = { 0, &uintType };
+        realFunc.addParameter(tmpP);
         arguments = intermediate.growAggregate(arguments, intermediate.addConstantUnion(1, loc, true));
 
         result = handleFunctionCall(loc, &realFunc, arguments);
@@ -6645,7 +6646,8 @@ TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, T
             realFunc.addParameter((*function)[i]);
         }
 
-        realFunc.addParameter(TParameter{ 0, &uintType });
+        TParameter tmpP = { 0, &uintType };
+        realFunc.addParameter(tmpP);
         arguments = intermediate.growAggregate(arguments, intermediate.addConstantUnion(-1, loc, true));
 
         result = handleFunctionCall(loc, &realFunc, arguments);
