@@ -626,7 +626,7 @@ void TParseContextBase::growGlobalUniformBlock(const TSourceLoc& loc, TType& mem
 
 void TParseContextBase::growAtomicCounterBlock(int binding, const TSourceLoc& loc, TType& memberType, const TString& memberName, TTypeList* typeList) {
     // Make the atomic counter block, if not yet made.
-    auto &at  = atomicCounterBuffers.find(binding);
+    const auto &at  = atomicCounterBuffers.find(binding);
     if (at == atomicCounterBuffers.end()) {
         atomicCounterBuffers.insert({binding, (TVariable*)nullptr });
         atomicCounterBlockFirstNewMember.insert({binding, 0});
