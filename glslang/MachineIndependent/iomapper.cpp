@@ -600,10 +600,7 @@ TDefaultGlslIoResolver::TDefaultGlslIoResolver(const TIntermediate& intermediate
 
 int TDefaultGlslIoResolver::resolveInOutLocation(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
-    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
-                            ent.symbol->getType().getTypeName()
-                            :
-                            ent.symbol->getName();
+    const TString& name = getAccessName(ent.symbol);
     if (currentStage != stage) {
         preStage = currentStage;
         currentStage = stage;
@@ -651,7 +648,7 @@ int TDefaultGlslIoResolver::resolveInOutLocation(EShLanguage stage, TVarEntryInf
         TVarSlotMap::iterator iter = storageSlotMap[resourceKey].find(name);
         if (iter != storageSlotMap[resourceKey].end()) {
             // If interface resource be found, set it has location and this symbol's new location
-            // equal the symbol's explicit location declarated in pre or next stage.
+            // equal the symbol's explicit location declaration in pre or next stage.
             //
             // vs:    out vec4 a;
             // fs:    layout(..., location = 3,...) in vec4 a;
@@ -687,10 +684,7 @@ int TDefaultGlslIoResolver::resolveInOutLocation(EShLanguage stage, TVarEntryInf
 
 int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
-    const TString& name = IsAnonymous(ent.symbol->getName()) ?
-                            ent.symbol->getType().getTypeName()
-                            :
-                            ent.symbol->getName();
+    const TString& name = getAccessName(ent.symbol);
     // kick out of not doing this
     if (! doAutoLocationMapping()) {
         return ent.newLocation = -1;
@@ -733,7 +727,7 @@ int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEn
         TVarSlotMap::iterator iter = slotMap.find(name);
         if (iter != slotMap.end()) {
             // If uniform resource be found, set it has location and this symbol's new location
-            // equal the uniform's explicit location declarated in other stage.
+            // equal the uniform's explicit location declaration in other stage.
             //
             // vs:    uniform vec4 a;
             // fs:    layout(..., location = 3,...) uniform vec4 a;
@@ -741,7 +735,7 @@ int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEn
             location = iter->second;
         }
         if (! hasLocation) {
-            // No explicit location declaraten in other stage.
+            // No explicit location declaration in other stage.
             // So we should find a new slot for this uniform.
             //
             // vs:    uniform vec4 a;
@@ -750,7 +744,7 @@ int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEn
             storageSlotMap[resourceKey][name] = location;
         }
     } else {
-        // the first uniform declarated in a program.
+        // the first uniform declaration in a program.
         TVarSlotMap varSlotMap;
         location = getFreeSlot(resourceKey, 0, size);
         varSlotMap[name] = location;
@@ -761,11 +755,8 @@ int TDefaultGlslIoResolver::resolveUniformLocation(EShLanguage /*stage*/, TVarEn
 
 int TDefaultGlslIoResolver::resolveBinding(EShLanguage stage, TVarEntryInfo& ent) {
     const TType& type = ent.symbol->getType();
-    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
-                            ent.symbol->getType().getTypeName()
-                            :
-                            ent.symbol->getName();
-    // On OpenGL arrays of opaque types take a seperate binding for each element
+    const TString& name = getAccessName(ent.symbol);
+    // On OpenGL arrays of opaque types take a separate binding for each element
     int numBindings = intermediate.getSpv().openGl != 0 && type.isSizedArray() ? type.getCumulativeArraySize() : 1;
     TResourceType resource = getResourceType(type);
     // don't need to handle uniform symbol, it will be handled in resolveUniformLocation
@@ -841,10 +832,7 @@ void TDefaultGlslIoResolver::endCollect(EShLanguage /*stage*/) {
 
 void TDefaultGlslIoResolver::reserverStorageSlot(TVarEntryInfo& ent, TInfoSink& infoSink) {
     const TType& type = ent.symbol->getType();
-    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
-                            ent.symbol->getType().getTypeName()
-                            :
-                            ent.symbol->getName();
+    const TString& name = getAccessName(ent.symbol);
     TStorageQualifier storage = type.getQualifier().storage;
     EShLanguage stage(EShLangCount);
     switch (storage) {
@@ -904,10 +892,7 @@ void TDefaultGlslIoResolver::reserverStorageSlot(TVarEntryInfo& ent, TInfoSink& 
 
 void TDefaultGlslIoResolver::reserverResourceSlot(TVarEntryInfo& ent, TInfoSink& infoSink) {
     const TType& type = ent.symbol->getType();
-    const TString& name = ent.symbol->getBasicType() == EbtBlock ?
-                            ent.symbol->getType().getTypeName()
-                            :
-                            ent.symbol->getName();
+    const TString& name = getAccessName(ent.symbol);
     TResourceType resource = getResourceType(type);
     int set = intermediate.getSpv().openGl != 0 ? resource : resolveSet(ent.stage, ent);
     int resourceKey = set;
@@ -932,6 +917,13 @@ void TDefaultGlslIoResolver::reserverResourceSlot(TVarEntryInfo& ent, TInfoSink&
             }
         }
     }
+}
+
+const TString& TDefaultGlslIoResolver::getAccessName(const TIntermSymbol* symbol)
+{
+    return symbol->getBasicType() == EbtBlock ?
+        symbol->getType().getTypeName() :
+        symbol->getName();
 }
 
 //TDefaultGlslIoResolver end
