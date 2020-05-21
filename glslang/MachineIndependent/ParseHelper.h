@@ -244,7 +244,7 @@ protected:
         const TVariable* var = symbol.getAsVariable();
         if (!var)
             return false;
-        auto& at = atomicCounterBuffers.find(var->getType().getQualifier().layoutBinding);
+        const auto& at = atomicCounterBuffers.find(var->getType().getQualifier().layoutBinding);
         return (at != atomicCounterBuffers.end() && (*at).second->getType() == var->getType());
     }
 
