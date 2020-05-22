@@ -507,8 +507,8 @@ static inline bool isSameInterface(TIntermSymbol* symbol, EShLanguage stage, TIn
         (symbol->getQualifier().storage == EvqUniform  && unitSymbol->getQualifier().storage == EvqUniform) ||
         (symbol->getQualifier().storage == EvqBuffer   && unitSymbol->getQualifier().storage == EvqBuffer) ||
         // 3) in/out matched across stage boundary
-        (stage < unitStage && symbol->getQualifier().storage == EvqVaryingIn  && unitSymbol->getQualifier().storage == EvqVaryingOut) ||
-        (unitStage < stage && symbol->getQualifier().storage == EvqVaryingOut && unitSymbol->getQualifier().storage == EvqVaryingIn);
+        (stage < unitStage && symbol->getQualifier().storage == EvqVaryingOut  && unitSymbol->getQualifier().storage == EvqVaryingIn) ||
+        (unitStage < stage && symbol->getQualifier().storage == EvqVaryingIn && unitSymbol->getQualifier().storage == EvqVaryingOut);
 }
 
 //
