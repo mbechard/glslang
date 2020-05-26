@@ -303,7 +303,7 @@ void TParseContext::finalizeGlobalUniformBlockLayout(TVariable&)
 void TParseContext::setUniformBlockDefaults(TType& block) const
 {
     block.getQualifier().layoutPacking = ElpStd140;
-    block.getQualifier().layoutMatrix = ElmRowMajor;
+    block.getQualifier().layoutMatrix = ElmColumnMajor;
 }
 
 
