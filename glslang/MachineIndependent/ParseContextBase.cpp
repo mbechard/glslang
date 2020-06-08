@@ -643,8 +643,7 @@ void TParseContextBase::growAtomicCounterBlock(int binding, const TSourceLoc& lo
         char charBuffer[512];
         if (binding != TQualifier::layoutBindingEnd) {
             snprintf(charBuffer, 512, "%s_%d", getAtomicCounterBlockName(), binding);
-        }
-        else {
+        } else {
             snprintf(charBuffer, 512, "%s_0", getAtomicCounterBlockName());
         }
         
