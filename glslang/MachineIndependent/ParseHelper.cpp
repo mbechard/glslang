@@ -6613,6 +6613,7 @@ TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, T
 {
     TIntermTyped* result = nullptr;
 
+#ifndef GLSLANG_WEB
     if (function->getBuiltInOp() != EOpNull) {
         return nullptr;
     }
@@ -6661,6 +6662,7 @@ TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, T
             result = arguments->getAsTyped();
         }
     }
+#endif
 
     return result;
 }
