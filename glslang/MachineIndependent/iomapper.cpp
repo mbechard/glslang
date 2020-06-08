@@ -315,9 +315,7 @@ struct TSymbolValidater
         TIntermSymbol* base = ent1.symbol;
         const TType& type = ent1.symbol->getType();
         const TString& name = entKey.first;
-        TArraySizes arraySizes1, arraySizes2;
         EShLanguage stage = ent1.stage;
-
         EShLanguage preStage, currentStage, nextStage;
 
         preStage = EShLangCount;
@@ -338,15 +336,15 @@ struct TSymbolValidater
 
         // basic checking that symbols match
         // more extensive checking in the link stage
-
         if (base->getQualifier().storage == EvqVaryingIn) {
             // validate stage in;
             if (preStage == EShLangCount)
                 return;
+            if (name == "gl_PerVertex")
+                return;
             if (outVarMaps[preStage] != nullptr) {
                 auto ent2 = outVarMaps[preStage]->find(name);
                 if (ent2 != outVarMaps[preStage]->end()) {
-                   
                     if (ent2->second.symbol->getType().sameElementType(type))
                         return;
                     else {
@@ -361,6 +359,8 @@ struct TSymbolValidater
         else if (base->getQualifier().storage == EvqVaryingOut) {
             // validate stage out;
             if (nextStage == EShLangCount)
+                return;
+            if (name == "gl_PerVertex")
                 return;
             if (outVarMaps[nextStage] != nullptr) {
                 auto ent2 = inVarMaps[nextStage]->find(name);
