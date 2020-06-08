@@ -413,7 +413,7 @@ void ProcessBlockStorage(int& argc, char**& argv, std::vector<std::pair<std::str
         usage();
 
     glslang::TBlockStorageClass blockStorage = glslang::EbsNone;
-    
+
     std::string strBacking(argv[2]);
     if (strBacking == "uniform")
         blockStorage = glslang::EbsUniform;

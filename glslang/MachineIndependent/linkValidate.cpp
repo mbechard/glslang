@@ -544,7 +544,7 @@ void TIntermediate::mergeGlobalUniformBlocks(TInfoSink& infoSink, TIntermediate&
 
     auto itUnitBlock = unitDefaultBlocks.begin();
     for (; itUnitBlock != unitDefaultBlocks.end(); itUnitBlock++) {
-        
+
         bool add = true;
         auto itBlock = defaultBlocks.begin();
 

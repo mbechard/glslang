@@ -112,7 +112,7 @@ struct TVarEntryInfo {
 
             if (lPoints != rPoints)
                 return lPoints > rPoints;
-            
+
             return l.id < r.id;
         }
     };

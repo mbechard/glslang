@@ -355,8 +355,7 @@ struct TSymbolValidater
                 }
                 return;
             }
-        }
-        else if (base->getQualifier().storage == EvqVaryingOut) {
+        } else if (base->getQualifier().storage == EvqVaryingOut) {
             // validate stage out;
             if (nextStage == EShLangCount)
                 return;
@@ -375,8 +374,7 @@ struct TSymbolValidater
                 }
                 return;
             }
-        }
-        else if (base->getQualifier().isUniformOrBuffer() && !base->getQualifier().isPushConstant()) {
+        } else if (base->getQualifier().isUniformOrBuffer() && !base->getQualifier().isPushConstant()) {
             // validate uniform type;
             for (int i = 0; i < EShLangCount; i++) {
                 if (i != currentStage && outVarMaps[i] != nullptr) {
@@ -394,7 +392,7 @@ struct TSymbolValidater
         }
     }
     TVarLiveMap *inVarMaps[EShLangCount], *outVarMaps[EShLangCount], *uniformVarMap[EShLangCount];
-    
+
     // Use for mark current shader stage for resolver
     TIoMapResolver& resolver;
     TInfoSink& infoSink;
