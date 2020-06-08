@@ -315,6 +315,7 @@ struct TSymbolValidater
         TIntermSymbol* base = ent1.symbol;
         const TType& type = ent1.symbol->getType();
         const TString& name = entKey.first;
+        TString mangleName1, mangleName2;
         EShLanguage stage = ent1.stage;
         EShLanguage preStage, currentStage, nextStage;
 
@@ -334,6 +335,14 @@ struct TSymbolValidater
             }
         }
 
+        if (type.getQualifier().isArrayedIo(stage)) {
+            TType subType(type, 0);
+            subType.appendMangledName(mangleName1);
+        } else {
+            type.appendMangledName(mangleName1);
+        }
+
+
         // basic checking that symbols match
         // more extensive checking in the link stage
         if (base->getQualifier().storage == EvqVaryingIn) {
@@ -345,7 +354,13 @@ struct TSymbolValidater
             if (outVarMaps[preStage] != nullptr) {
                 auto ent2 = outVarMaps[preStage]->find(name);
                 if (ent2 != outVarMaps[preStage]->end()) {
-                    if (ent2->second.symbol->getType().sameElementType(type))
+                    if (ent2->second.symbol->getType().getQualifier().isArrayedIo(preStage)) {
+                        TType subType(ent2->second.symbol->getType(), 0);
+                        subType.appendMangledName(mangleName2);
+                    } else {
+                        ent2->second.symbol->getType().appendMangledName(mangleName2);
+                    }
+                    if (mangleName1 == mangleName2)
                         return;
                     else {
                         TString err = "Invalid In/Out variable type : " + entKey.first;
@@ -364,7 +379,13 @@ struct TSymbolValidater
             if (outVarMaps[nextStage] != nullptr) {
                 auto ent2 = inVarMaps[nextStage]->find(name);
                 if (ent2 != inVarMaps[nextStage]->end()) {
-                    if (ent2->second.symbol->getType().sameElementType(type))
+                    if (ent2->second.symbol->getType().getQualifier().isArrayedIo(nextStage)) {
+                        TType subType(ent2->second.symbol->getType(), 0);
+                        subType.appendMangledName(mangleName2);
+                    } else {
+                        ent2->second.symbol->getType().appendMangledName(mangleName2);
+                    }
+                    if (mangleName1 == mangleName2)
                         return;
                     else {
                         TString err = "Invalid In/Out variable type : " + entKey.first;
@@ -380,12 +401,14 @@ struct TSymbolValidater
                 if (i != currentStage && outVarMaps[i] != nullptr) {
                     auto ent2 = uniformVarMap[i]->find(name);
                     if (ent2 != uniformVarMap[i]->end()) {
-                        if (!ent2->second.symbol->getType().sameElementType(type)) {
+                        ent2->second.symbol->getType().appendMangledName(mangleName2);
+                        if (mangleName1 != mangleName2) {
                             ent2->second.symbol->getType().sameElementType(type);
                             TString err = "Invalid Uniform variable type : " + entKey.first;
                             infoSink.info.message(EPrefixInternalError, err.c_str());
                             hadError = true;
                         }
+                        mangleName2.clear();
                     }
                 }
             }
