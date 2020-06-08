@@ -290,12 +290,10 @@ void TParseContext::growAtomicCounterBlock(int binding, const TSourceLoc& loc, T
 const char* TParseContext::getGlobalUniformBlockName() const
 {
     const char* name = intermediate.getGlobalUniformBlockName();
-    if (std::string(name) == "") {
+    if (std::string(name) == "")
         return "gl_DefaultUniformBlock";
-    }
-    else {
+    else
         return name;
-    }
 }
 void TParseContext::finalizeGlobalUniformBlockLayout(TVariable&)
 {
@@ -310,12 +308,10 @@ void TParseContext::setUniformBlockDefaults(TType& block) const
 const char* TParseContext::getAtomicCounterBlockName() const
 {
     const char* name = intermediate.getAtomicCounterBlockName();
-    if (std::string(name) == "") {
+    if (std::string(name) == "")
         return "gl_AtomicCounterBlock";
-    }
-    else {
+    else
         return name;
-    }
 }
 void TParseContext::finalizeAtomicCounterBlockLayout(TVariable&)
 {
@@ -5046,24 +5042,20 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
     }
     if (id == TQualifier::getLayoutPackingString(ElpPacked)) {
         if (spvVersion.spv != 0) {
-            if (spvVersion.vulkanRelaxed) {
+            if (spvVersion.vulkanRelaxed)
                 return; // silently ignore qualifier
-            }
-            else {
+            else
                 spvRemoved(loc, "packed");
-            }
         }
         publicType.qualifier.layoutPacking = ElpPacked;
         return;
     }
     if (id == TQualifier::getLayoutPackingString(ElpShared)) {
         if (spvVersion.spv != 0) {
-            if (spvVersion.vulkanRelaxed) {
+            if (spvVersion.vulkanRelaxed)
                 return; // silently ignore qualifier
-            }
-            else {
+            else
                 spvRemoved(loc, "shared");
-            }
         }
         publicType.qualifier.layoutPacking = ElpShared;
         return;
@@ -6633,8 +6625,7 @@ TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, T
         arguments = intermediate.growAggregate(arguments, intermediate.addConstantUnion(1, loc, true));
 
         result = handleFunctionCall(loc, &realFunc, arguments);
-    }
-    else if (function->getName() == "atomicCounterDecrement") {
+    } else if (function->getName() == "atomicCounterDecrement") {
         // change atomicCounterDecrement into an atomicAdd with -1
         // and subtract 1 from result, to return post-decrement value
         TString name("atomicAdd");
@@ -6656,8 +6647,7 @@ TIntermTyped* TParseContext::vkRelaxedRemapFunctionCall(const TSourceLoc& loc, T
         if (result) {
             result = handleBinaryMath(loc, "-", EOpSub, result, intermediate.addConstantUnion(1, loc, true));
         }
-    }
-    else if (function->getName() == "atomicCounter") {
+    } else if (function->getName() == "atomicCounter") {
         // change atomicCounter into a direct read of the variable
         if (arguments->getAsTyped()) {
             result = arguments->getAsTyped();

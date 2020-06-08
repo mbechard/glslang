@@ -415,15 +415,12 @@ void ProcessBlockStorage(int& argc, char**& argv, std::vector<std::pair<std::str
     glslang::TBlockStorageClass blockStorage = glslang::EbsNone;
     
     std::string strBacking(argv[2]);
-    if (strBacking == "uniform") {
+    if (strBacking == "uniform")
         blockStorage = glslang::EbsUniform;
-    }
-    else if (strBacking == "buffer") {
+    else if (strBacking == "buffer")
         blockStorage = glslang::EbsStorageBuffer;
-    }
-    else if (strBacking == "push_constant") {
+    else if (strBacking == "push_constant")
         blockStorage = glslang::EbsPushConstant;
-    }
     else {
         printf("%s: invalid block storage\n", strBacking.c_str());
         usage();
@@ -466,7 +463,7 @@ bool isValidIdentifier(const char* str) {
     return true;
 }
 
-// Process setings for either the global buffer block or global unfirom block
+// Process settings for either the global buffer block or global unfirom block
 // of the form:
 //      --argname name set binding
 void ProcessGlobalBlockSettings(int& argc, char**& argv, std::string* name, unsigned int* set, unsigned int* binding)
