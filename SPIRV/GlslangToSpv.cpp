@@ -2683,6 +2683,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         break;
 
     case glslang::EOpAtomicAdd:
+    case glslang::EOpAtomicSubtract:
     case glslang::EOpAtomicMin:
     case glslang::EOpAtomicMax:
     case glslang::EOpAtomicAnd:
@@ -2852,6 +2853,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             break;
 
         case glslang::EOpAtomicAdd:
+        case glslang::EOpAtomicSubtract:
         case glslang::EOpAtomicMin:
         case glslang::EOpAtomicMax:
         case glslang::EOpAtomicAnd:
@@ -6693,6 +6695,7 @@ spv::Id TGlslangToSpvTraverser::createAtomicOperation(glslang::TOperator op, spv
                 builder.addCapability(spv::CapabilityAtomicFloat64AddEXT);
         }
         break;
+    case glslang::EOpAtomicSubtract:
     case glslang::EOpAtomicCounterSubtract:
         opCode = spv::OpAtomicISub;
         break;
