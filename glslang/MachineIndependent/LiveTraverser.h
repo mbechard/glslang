@@ -80,6 +80,17 @@ public:
         }
     }
 
+    void traverseGlobalSequences()
+    {
+        TIntermSequence& globals = intermediate.getTreeRoot()->getAsAggregate()->getSequence();
+        for (unsigned int f = 0; f < globals.size(); ++f) {
+            TIntermAggregate* candidate = globals[f]->getAsAggregate();
+            if (candidate && candidate->getOp() == EOpSequence) {
+                candidate->traverse(this);
+            }
+        }
+    }
+
     typedef std::list<TIntermAggregate*> TFunctionStack;
     TFunctionStack functions;
 
