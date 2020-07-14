@@ -1110,6 +1110,9 @@ bool TIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TInfoSi
         iter_binding_live.functions.pop_back();
         function->traverse(&iter_binding_live);
     }
+    // traverse global variable declarations that may be accessing things such as UBOs
+    iter_binding_live.traverseGlobalSequences();
+
     // sort entries by priority. see TVarEntryInfo::TOrderByPriority for info.
     std::for_each(inVarMap.begin(), inVarMap.end(),
                   [&inVector](TVarLivePair p) { inVector.push_back(p); });
@@ -1205,6 +1208,9 @@ bool TGlslIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TIn
         iter_binding_live.functions.pop_back();
         function->traverse(&iter_binding_live);
     }
+    // traverse global variable declarations that may be accessing things such as UBOs
+    iter_binding_live.traverseGlobalSequences();
+
     TNotifyInOutAdaptor inOutNotify(stage, *resolver);
     TNotifyUniformAdaptor uniformNotify(stage, *resolver);
     // Resolve current stage input symbol location with previous stage output here,
