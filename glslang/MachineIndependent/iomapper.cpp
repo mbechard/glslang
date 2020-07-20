@@ -79,6 +79,11 @@ public:
             target = &outputList;
         else if (base->getQualifier().isUniformOrBuffer() && !base->getQualifier().isPushConstant())
             target = &uniformList;
+        // If a global is being visited, then we should also traverse it incase it's evaluation
+        // ends up visiting inputs we want to tag as live
+        else if (base->getQualifier().storage == EvqGlobal)
+            addGlobalReference(base->getName());
+
         if (target) {
             TString name = base->getBasicType() == EbtBlock ?
                 base->getType().getTypeName() :
@@ -1128,13 +1133,11 @@ bool TIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TInfoSi
     TVarGatherTraverser iter_binding_live(intermediate, false, inVarMap, outVarMap, uniformVarMap);
     root->traverse(&iter_binding_all);
     iter_binding_live.pushFunction(intermediate.getEntryPointMangledName().c_str());
-    while (! iter_binding_live.functions.empty()) {
-        TIntermNode* function = iter_binding_live.functions.back();
-        iter_binding_live.functions.pop_back();
-        function->traverse(&iter_binding_live);
+    while (! iter_binding_live.destinations.empty()) {
+        TIntermNode* destination = iter_binding_live.destinations.back();
+        iter_binding_live.destinations.pop_back();
+        destination->traverse(&iter_binding_live);
     }
-    // traverse global variable declarations that may be accessing things such as UBOs
-    iter_binding_live.traverseGlobalSequences();
 
     // sort entries by priority. see TVarEntryInfo::TOrderByPriority for info.
     std::for_each(inVarMap.begin(), inVarMap.end(),
@@ -1237,13 +1240,11 @@ bool TGlslIoMapper::addStage(EShLanguage stage, TIntermediate& intermediate, TIn
                                           *uniformVarMap[stage]);
     root->traverse(&iter_binding_all);
     iter_binding_live.pushFunction(intermediate.getEntryPointMangledName().c_str());
-    while (! iter_binding_live.functions.empty()) {
-        TIntermNode* function = iter_binding_live.functions.back();
-        iter_binding_live.functions.pop_back();
-        function->traverse(&iter_binding_live);
+    while (! iter_binding_live.destinations.empty()) {
+        TIntermNode* destination = iter_binding_live.destinations.back();
+        iter_binding_live.destinations.pop_back();
+        destination->traverse(&iter_binding_live);
     }
-    // traverse global variable declarations that may be accessing things such as UBOs
-    iter_binding_live.traverseGlobalSequences();
 
     TNotifyInOutAdaptor inOutNotify(stage, *resolver);
     TNotifyUniformAdaptor uniformNotify(stage, *resolver);
