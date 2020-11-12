@@ -881,6 +881,12 @@ public:
         uniqueId |= (level << LevelFlagBitOffset);
     }
 
+    void overwriteUniqueId(unsigned id)
+    {
+        uniqueId = id;
+        updateUniqueIdLevelFlag();
+    }
+
 protected:
     TSymbolTable(TSymbolTable&);
     TSymbolTable& operator=(TSymbolTableLevel&);

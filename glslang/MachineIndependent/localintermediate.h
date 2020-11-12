@@ -292,7 +292,8 @@ public:
         invertY(false),
         useStorageBuffer(false),
         nanMinMaxClamp(false),
-        depthReplacing(false)
+        depthReplacing(false),
+        uniqueId(0)
 #ifndef GLSLANG_WEB
         ,
         implicitThisName("@this"), implicitCounterName("@count"),
@@ -898,6 +899,8 @@ public:
     void addProcess(const std::string& process) { processes.addProcess(process); }
     void addProcessArgument(const std::string& arg) { processes.addArgument(arg); }
     const std::vector<std::string>& getProcesses() const { return processes.getProcesses(); }
+    unsigned getUniqueId() const { return uniqueId; }
+    void setUniqueId(unsigned id) { uniqueId = id; }
 
     // Certain explicit conversions are allowed conditionally
 #ifdef GLSLANG_WEB
@@ -986,6 +989,7 @@ protected:
     int localSize[3];
     bool localSizeNotDefault[3];
     int localSizeSpecId[3];
+    unsigned uniqueId;
 #ifndef GLSLANG_WEB
 public:
     const char* const implicitThisName;
