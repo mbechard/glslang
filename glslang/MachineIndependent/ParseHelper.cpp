@@ -348,7 +348,9 @@ void TParseContext::handlePragma(const TSourceLoc& loc, const TVector<TString>& 
         else if (tokens[2].compare("off") == 0)
             contextPragma.optimize = false;
         else {
-            error(loc, "\"on\" or \"off\" expected after '(' for 'optimize' pragma", "#pragma", "");
+            if(relaxedErrors())
+                //  If an implementation does not recognize the tokens following #pragma, then it will ignore that pragma.
+                warn(loc, "\"on\" or \"off\" expected after '(' for 'optimize' pragma", "#pragma", "");
             return;
         }
 
@@ -372,7 +374,9 @@ void TParseContext::handlePragma(const TSourceLoc& loc, const TVector<TString>& 
         else if (tokens[2].compare("off") == 0)
             contextPragma.debug = false;
         else {
-            error(loc, "\"on\" or \"off\" expected after '(' for 'debug' pragma", "#pragma", "");
+            if(relaxedErrors())
+                //  If an implementation does not recognize the tokens following #pragma, then it will ignore that pragma.
+                warn(loc, "\"on\" or \"off\" expected after '(' for 'debug' pragma", "#pragma", "");
             return;
         }
 
@@ -853,8 +857,11 @@ TIntermTyped* TParseContext::handleBinaryMath(const TSourceLoc& loc, const char*
     }
 
     TIntermTyped* result = nullptr;
-    if (allowed)
+    if (allowed) {
+        if ((left->isReference() || right->isReference()))
+            requireExtensions(loc, 1, &E_GL_EXT_buffer_reference2, "buffer reference math");
         result = intermediate.addBinaryMath(op, left, right, loc);
+    }
 
     if (result == nullptr)
         binaryOpError(loc, str, left->getCompleteString(), right->getCompleteString());
@@ -1788,6 +1795,14 @@ TIntermTyped* TParseContext::addOutputArgumentConversions(const TFunction& funct
 
     return conversionTree;
 #endif
+}
+
+TIntermTyped* TParseContext::addAssign(const TSourceLoc& loc, TOperator op, TIntermTyped* left, TIntermTyped* right)
+{
+    if ((op == EOpAddAssign || op == EOpSubAssign) && left->isReference())
+        requireExtensions(loc, 1, &E_GL_EXT_buffer_reference2, "+= and -= on a buffer reference");
+
+    return intermediate.addAssign(op, left, right, loc);
 }
 
 void TParseContext::memorySemanticsCheck(const TSourceLoc& loc, const TFunction& fnCandidate, const TIntermOperator& callNode)
@@ -2899,7 +2914,10 @@ void TParseContext::reservedPpErrorCheck(const TSourceLoc& loc, const char* iden
     if (strncmp(identifier, "GL_", 3) == 0)
         ppError(loc, "names beginning with \"GL_\" can't be (un)defined:", op,  identifier);
     else if (strncmp(identifier, "defined", 8) == 0)
-        ppError(loc, "\"defined\" can't be (un)defined:", op,  identifier);
+        if (relaxedErrors())
+            ppWarn(loc, "\"defined\" is (un)defined:", op,  identifier);
+        else
+            ppError(loc, "\"defined\" can't be (un)defined:", op,  identifier);
     else if (strstr(identifier, "__") != 0) {
         if (isEsProfile() && version >= 300 &&
             (strcmp(identifier, "__LINE__") == 0 ||
@@ -2907,7 +2925,7 @@ void TParseContext::reservedPpErrorCheck(const TSourceLoc& loc, const char* iden
              strcmp(identifier, "__VERSION__") == 0))
             ppError(loc, "predefined names can't be (un)defined:", op,  identifier);
         else {
-            if (isEsProfile() && version < 300)
+            if (isEsProfile() && version < 300 && !relaxedErrors())
                 ppError(loc, "names containing consecutive underscores are reserved, and an error if version < 300:", op, identifier);
             else
                 ppWarn(loc, "names containing consecutive underscores are reserved:", op, identifier);
@@ -4320,6 +4338,8 @@ TSymbol* TParseContext::redeclareBuiltinVariable(const TSourceLoc& loc, const TS
         (identifier == "gl_FragCoord"           && ((nonEsRedecls && version >= 150) || esRedecls)) ||
          identifier == "gl_ClipDistance"                                                            ||
          identifier == "gl_CullDistance"                                                            ||
+         identifier == "gl_ShadingRateEXT"                                                          ||
+         identifier == "gl_PrimitiveShadingRateEXT"                                                 ||
          identifier == "gl_FrontColor"                                                              ||
          identifier == "gl_BackColor"                                                               ||
          identifier == "gl_FrontSecondaryColor"                                                     ||
@@ -6817,6 +6837,12 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
     type.copyArrayInnerSizes(publicType.arraySizes);
     arrayOfArrayVersionCheck(loc, type.getArraySizes());
 
+    if (initializer) {
+        if (type.getBasicType() == EbtRayQuery) {
+            error(loc, "ray queries can only be initialized by using the rayQueryInitializeEXT intrinsic:", "=", identifier.c_str());
+        }
+    }
+
     if (type.isCoopMat()) {
         intermediate.setUseVulkanMemoryModel();
         intermediate.setUseStorageBuffer();
@@ -7580,6 +7606,8 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
         if (!node->getType().isCoopMat()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
                 node = intermediate.addConversion(type.getBasicType(), node);
+                if (node == nullptr)
+                    return nullptr;
             }
             node = intermediate.setAggregateOperator(node, EOpConstructCooperativeMatrix, type, node->getLoc());
         } else {

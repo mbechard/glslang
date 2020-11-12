@@ -1322,6 +1322,9 @@ static void OutputConstantUnion(TInfoSink& out, const TIntermTyped* node, const 
                 out.debug << buf << "\n";
             }
             break;
+        case EbtString:
+            out.debug << "\"" << constUnion[i].getSConst()->c_str() << "\"\n";
+            break;
         default:
             out.info.message(EPrefixInternalError, "Unknown constant", node->getLoc());
             break;
@@ -1467,7 +1470,7 @@ void TIntermediate::output(TInfoSink& infoSink, bool tree)
     infoSink.debug << "Shader version: " << version << "\n";
     if (requestedExtensions.size() > 0) {
         for (auto extIt = requestedExtensions.begin(); extIt != requestedExtensions.end(); ++extIt)
-            infoSink.debug << "Requested " << extIt->first << "\n";
+            infoSink.debug << "Requested " << *extIt << "\n";
     }
 
     if (xfbMode)
