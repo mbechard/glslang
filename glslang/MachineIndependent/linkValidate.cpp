@@ -304,7 +304,7 @@ void TIntermediate::mergeTrees(TInfoSink& infoSink, TIntermediate& unit)
     // Map by global name to unique ID to rationalize the same object having
     // differing IDs in different trees.
     TIdMaps idMaps;
-    int maxId;
+    long long maxId;
     seedIdMap(idMaps, maxId);
     remapIds(idMaps, maxId + 1, unit);
 
@@ -344,12 +344,12 @@ public:
         }
         maxId = std::max(maxId, symbol->getId());
     }
-    int getMaxId() const { return maxId; }
+    long long getMaxId() const { return maxId; }
 protected:
     TBuiltInIdTraverser(TBuiltInIdTraverser&);
     TBuiltInIdTraverser& operator=(TBuiltInIdTraverser&);
     TIdMaps& idMaps;
-    int maxId;
+    long long maxId;
 };
 
 // Traverser that seeds an ID map with non-builtins.
@@ -375,7 +375,7 @@ protected:
 };
 
 // Initialize the the ID map with what we know of 'this' AST.
-void TIntermediate::seedIdMap(TIdMaps& idMaps, int& maxId)
+void TIntermediate::seedIdMap(TIdMaps& idMaps, long long& maxId)
 {
     // all built-ins everywhere need to align on IDs and contribute to the max ID
     TBuiltInIdTraverser builtInIdTraverser(idMaps);
@@ -392,7 +392,7 @@ void TIntermediate::seedIdMap(TIdMaps& idMaps, int& maxId)
 // on having no bodies for the copy-constructor/operator=.)
 class TRemapIdTraverser : public TIntermTraverser {
 public:
-    TRemapIdTraverser(const TIdMaps& idMaps, int idShift) : idMaps(idMaps), idShift(idShift) { }
+    TRemapIdTraverser(const TIdMaps& idMaps, long long idShift) : idMaps(idMaps), idShift(idShift) { }
     // Do the mapping:
     //  - if the same symbol, adopt the 'this' ID
     //  - otherwise, ensure a unique ID by shifting to a new space
@@ -415,10 +415,10 @@ protected:
     TRemapIdTraverser(TRemapIdTraverser&);
     TRemapIdTraverser& operator=(TRemapIdTraverser&);
     const TIdMaps& idMaps;
-    int idShift;
+    long long idShift;
 };
 
-void TIntermediate::remapIds(const TIdMaps& idMaps, int idShift, TIntermediate& unit)
+void TIntermediate::remapIds(const TIdMaps& idMaps, long long idShift, TIntermediate& unit)
 {
     // Remap all IDs to either share or be unique, as dictated by the idMap and idShift.
     TRemapIdTraverser idTraverser(idMaps, idShift);

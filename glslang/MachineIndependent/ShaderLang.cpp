@@ -1814,7 +1814,7 @@ void TShader::addProcesses(const std::vector<std::string>& p)
     intermediate->addProcesses(p);
 }
 
-void  TShader::setUniqueId(unsigned id)
+void  TShader::setUniqueId(unsigned long long id)
 {
     intermediate->setUniqueId(id);
 }

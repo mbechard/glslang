@@ -104,8 +104,8 @@ public:
     virtual const TAnonMember* getAsAnonMember() const { return 0; }
     virtual const TType& getType() const = 0;
     virtual TType& getWritableType() = 0;
-    virtual void setUniqueId(int id) { uniqueId = id; }
-    virtual int getUniqueId() const { return uniqueId; }
+    virtual void setUniqueId(long long id) { uniqueId = id; }
+    virtual long long getUniqueId() const { return uniqueId; }
     virtual void setExtensions(int numExts, const char* const exts[])
     {
         assert(extensions == 0);
@@ -130,7 +130,7 @@ protected:
     TSymbol& operator=(const TSymbol&);
 
     const TString *name;
-    unsigned int uniqueId;      // For cross-scope comparing during code generation
+    unsigned long long uniqueId;      // For cross-scope comparing during code generation
 
     // For tracking what extensions must be present
     // (don't use if correct version/profile is present).
@@ -620,8 +620,8 @@ public:
     bool isEmpty() { return table.size() == 0; }
     bool atBuiltInLevel() { return isBuiltInLevel(currentLevel()); }
     bool atGlobalLevel()  { return isGlobalLevel(currentLevel()); }
-    static bool isBuiltInSymbol(int uniqueId) {
-        int level = uniqueId >> LevelFlagBitOffset;
+    static bool isBuiltInSymbol(long long uniqueId) {
+        int level = static_cast<int>(uniqueId >> LevelFlagBitOffset);
         return isBuiltInLevel(level);
     }
     void setNoBuiltInRedeclarations() { noBuiltInRedeclarations = true; }
@@ -859,7 +859,7 @@ public:
         }
     }
 
-    int getMaxSymbolId() { return uniqueId; }
+    long long getMaxSymbolId() { return uniqueId; }
 #if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
     void dump(TInfoSink& infoSink, bool complete = false) const;
 #endif
@@ -876,12 +876,12 @@ public:
     // Add current level in the high-bits of unique id
     void updateUniqueIdLevelFlag() {
         // clamp level to avoid overflow
-        uint32_t level = currentLevel() > 7 ? 7 : currentLevel();
-        uniqueId &= ((1 << LevelFlagBitOffset) - 1);
+        uint64_t level = currentLevel() > 127 ? 127 : currentLevel();
+        uniqueId &= ((1LL << LevelFlagBitOffset) - 1);
         uniqueId |= (level << LevelFlagBitOffset);
     }
 
-    void overwriteUniqueId(unsigned id)
+    void overwriteUniqueId(long long id)
     {
         uniqueId = id;
         updateUniqueIdLevelFlag();
@@ -892,9 +892,9 @@ protected:
     TSymbolTable& operator=(TSymbolTableLevel&);
 
     int currentLevel() const { return static_cast<int>(table.size()) - 1; }
-    static const uint32_t LevelFlagBitOffset = 28;
+    static const uint32_t LevelFlagBitOffset = 56;
     std::vector<TSymbolTableLevel*> table;
-    int uniqueId;     // for unique identification in code generation
+    long long uniqueId;     // for unique identification in code generation
     bool noBuiltInRedeclarations;
     bool separateNameSpaces;
     unsigned int adoptedLevels;
