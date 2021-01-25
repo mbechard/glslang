@@ -227,10 +227,10 @@ enum ComputeDerivativeMode {
 
 class TIdMaps {
 public:
-    TMap<TString, int>& operator[](int i) { return maps[i]; }
-    const TMap<TString, int>& operator[](int i) const { return maps[i]; }
+    TMap<TString, long long>& operator[](long long i) { return maps[i]; }
+    const TMap<TString, long long>& operator[](long long i) const { return maps[i]; }
 private:
-    TMap<TString, int> maps[EsiCount];
+    TMap<TString, long long> maps[EsiCount];
 };
 
 class TNumericFeatures {
@@ -297,7 +297,8 @@ public:
         atomicCounterBlockName(""),
         globalUniformBlockSet(TQualifier::layoutSetEnd),
         globalUniformBlockBinding(TQualifier::layoutBindingEnd),
-        atomicCounterBlockSet(TQualifier::layoutSetEnd)
+        atomicCounterBlockSet(TQualifier::layoutSetEnd),
+        uniqueId(0)
 #ifndef GLSLANG_WEB
         ,
         implicitThisName("@this"), implicitCounterName("@count"),
@@ -942,6 +943,8 @@ public:
     void addProcess(const std::string& process) { processes.addProcess(process); }
     void addProcessArgument(const std::string& arg) { processes.addArgument(arg); }
     const std::vector<std::string>& getProcesses() const { return processes.getProcesses(); }
+    unsigned long long getUniqueId() const { return uniqueId; }
+    void setUniqueId(unsigned long long id) { uniqueId = id; }
 
     // Certain explicit conversions are allowed conditionally
 #ifdef GLSLANG_WEB
@@ -970,14 +973,14 @@ public:
 #endif
 
 protected:
-    TIntermSymbol* addSymbol(int Id, const TString&, const TType&, const TConstUnionArray&, TIntermTyped* subtree, const TSourceLoc&);
+    TIntermSymbol* addSymbol(long long Id, const TString&, const TType&, const TConstUnionArray&, TIntermTyped* subtree, const TSourceLoc&);
     void error(TInfoSink& infoSink, const char*);
     void warn(TInfoSink& infoSink, const char*);
     void mergeCallGraphs(TInfoSink&, TIntermediate&);
     void mergeModes(TInfoSink&, TIntermediate&);
     void mergeTrees(TInfoSink&, TIntermediate&);
-    void seedIdMap(TIdMaps& idMaps, int& maxId);
-    void remapIds(const TIdMaps& idMaps, int idShift, TIntermediate&);
+    void seedIdMap(TIdMaps& idMaps, long long& maxId);
+    void remapIds(const TIdMaps& idMaps, long long idShift, TIntermediate&);
     void mergeBodies(TInfoSink&, TIntermSequence& globals, const TIntermSequence& unitGlobals);
     void mergeLinkerObjects(TInfoSink&, TIntermSequence& linkerObjects, const TIntermSequence& unitLinkerObjects, EShLanguage);
     void mergeBlockDefinitions(TInfoSink&, TIntermSymbol* block, TIntermSymbol* unitBlock, TIntermediate* unitRoot);
@@ -1030,6 +1033,7 @@ protected:
     int localSize[3];
     bool localSizeNotDefault[3];
     int localSizeSpecId[3];
+    unsigned long long uniqueId;
 #ifndef GLSLANG_WEB
 public:
     const char* const implicitThisName;
